@@ -1,0 +1,49 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Api;
+
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+/**
+ * Formato de respuesta único para toda la API v1 — ver docs/04_API.md.
+ * Nunca se devuelve una excepción interna ni un stack trace: siempre pasa
+ * por aquí o por el exception handler (bootstrap/app.php).
+ */
+final class RespuestaApi
+{
+    /**
+     * @param  array<string, mixed>  $metaExtra
+     */
+    public static function exito(mixed $data, int $status = 200, array $metaExtra = []): JsonResponse
+    {
+        return new JsonResponse([
+            'data' => $data,
+            'meta' => array_merge(['request_id' => self::requestId()], $metaExtra),
+        ], $status);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $detalles
+     */
+    public static function error(string $codigo, string $mensaje, int $status, array $detalles = []): JsonResponse
+    {
+        return new JsonResponse([
+            'error' => [
+                'codigo' => $codigo,
+                'mensaje' => $mensaje,
+                'detalles' => $detalles,
+            ],
+        ], $status);
+    }
+
+    private static function requestId(): string
+    {
+        /** @var Request|null $request */
+        $request = app()->bound('request') ? app('request') : null;
+
+        return $request?->attributes->get('request_id') ?? 'sin-request-id';
+    }
+}
