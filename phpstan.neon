@@ -1,0 +1,17 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    paths:
+        - app
+        - modules
+        - routes
+        - config
+
+    level: 6
+
+    excludePaths:
+        - app/Providers/*Provider.php
+
+    checkOctaneCompatibility: true
+    checkModelProperties: true

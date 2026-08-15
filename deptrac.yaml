@@ -1,0 +1,74 @@
+parameters:
+  paths:
+    - ./app
+    - ./modules
+
+  exclude_files:
+    - '#.*Test\.php$#'
+
+  layers:
+    - name: Domain
+      collectors:
+        - type: classNameRegex
+          value: '#^Modules\\Facturacion\\Domain\\.*#'
+
+    - name: Application
+      collectors:
+        - type: classNameRegex
+          value: '#^Modules\\Facturacion\\Application\\.*#'
+
+    - name: Infrastructure
+      collectors:
+        - type: classNameRegex
+          value: '#^Modules\\Facturacion\\Infrastructure\\.*#'
+
+    # Modelos Eloquent: persistencia pura en app/Models por convención
+    # Laravel/Filament (ver docs/01_ARQUITECTURA.md §2), no la entidad de
+    # dominio. Capa separada de "Interfaces" porque su relación de
+    # dependencia permitida es distinta: Infrastructure sí puede usarlos,
+    # pero ellos no dependen de nada nuestro, solo de Illuminate.
+    - name: Models
+      collectors:
+        - type: classNameRegex
+          value: '#^App\\Models\\.*#'
+
+    # Resto de app/: controladores, Filament, comandos, jobs, providers.
+    # La capa "externa" de verdad — orquesta Application, nunca al revés.
+    - name: Interfaces
+      collectors:
+        - type: classNameRegex
+          value: '#^App\\(?!Models\\).*#'
+
+    - name: Illuminate
+      collectors:
+        - type: classNameRegex
+          value: '#^Illuminate\\.*#'
+
+    - name: Greenter
+      collectors:
+        - type: classNameRegex
+          value: '#^Greenter\\.*#'
+
+  # Domain no depende de nada. Application solo de Domain (incluso las
+  # transacciones de BD se orquestan vía un puerto GestorTransacciones, no
+  # llamando Illuminate\Support\Facades\DB directamente). Infrastructure
+  # implementa los puertos de Domain, habla con el framework y traduce hacia
+  # los modelos Eloquent. Interfaces es la única capa que puede depender de
+  # todo — es donde vive la composición final (providers, controladores).
+  ruleset:
+    Domain: []
+    Application:
+      - Domain
+    Models:
+      - Illuminate
+    Infrastructure:
+      - Domain
+      - Illuminate
+      - Greenter
+      - Models
+    Interfaces:
+      - Domain
+      - Application
+      - Infrastructure
+      - Models
+      - Illuminate
