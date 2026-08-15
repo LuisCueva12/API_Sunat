@@ -6,10 +6,10 @@ namespace Modules\Facturacion\Application\CasosDeUso;
 
 use Modules\Facturacion\Domain\Comprobante\TipoComprobante;
 
-final class EmitirFactura extends EmitirComprobanteBase
+final class EmitirNotaCredito extends EmitirComprobanteBase
 {
     protected function tipo(): TipoComprobante
     {
-        return TipoComprobante::Factura;
+        return TipoComprobante::NotaCredito;
     }
 }

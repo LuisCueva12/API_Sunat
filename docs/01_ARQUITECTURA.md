@@ -179,7 +179,7 @@ No se agregan paquetes para UUID v7, rate limiting, cliente HTTP, cifrado — La
 | 2 | Greenter offline | XML firmado válido generado localmente |
 | 3 | SUNAT BETA (**Hito Obligatorio**) | Factura completa API→XML→firma→BETA→CDR aceptado, trazabilidad completa |
 | 4 | Async real | API responde <500ms aunque SUNAT tarde; reintentos diferenciados |
-| 5 | Boleta, NC, ND | Los 4 tipos emiten correctamente en BETA |
+| 5 | Boleta, NC, ND | Los 4 tipos emiten correctamente en BETA — código de dominio/aplicación completo desde antes de Fase 3 (`EmitirComprobanteBase` compartido), pendiente de probar en BETA junto con Factura |
 | 6 | Multiempresa real | Suite de tests de fuga entre tenants en verde |
 | 7 | Webhooks + Auditoría + Observabilidad | Eventos disparan webhooks firmados; toda acción sensible auditada |
 | 8 | Panel | Alta de empresa y emisión sin tocar la API directamente |
