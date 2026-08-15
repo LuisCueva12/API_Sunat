@@ -77,15 +77,22 @@ interface ValidadorComprobante
 
 ## Puertos (interfaces hacia Infrastructure)
 
+Implementados y wireados en `DomainServiceProvider` (los 3 primeros) o ya escritos pendientes de wiring (los 2 de SUNAT, faltan certificados/credenciales reales):
+
 ```php
-interface EnviadorComprobanteElectronico { public function enviar(Comprobante $c): ResultadoEnvio; }
-interface GeneradorXmlComprobante        { public function generar(Comprobante $c): string; }
-interface FirmadorXml                    { public function firmar(string $xml, CertificadoDigital $cert): string; }
-interface AlmacenPrivado                 { public function guardar(string $ruta, string $contenido): void; }
-interface GeneradorRepresentacionImpresa { public function generar(Comprobante $c): string; }
-interface NotificadorWebhook             { public function notificar(Webhook $w, array $payload): void; }
-interface AsignadorCorrelativo           { public function asignar(Serie $serie): NumeroComprobante; }
-interface RepositorioComprobante         { /* buscar/guardar por id, por empresa+numero */ }
+interface RepositorioComprobante { guardar(Comprobante $c): void; buscarPorId(string $empresaId, string $id): ?Comprobante; }
+interface AsignadorCorrelativo   { asignar(string $empresaId, TipoComprobante $t, Serie $s): NumeroComprobante; }
+interface GestorTransacciones    { ejecutar(Closure $operacion): mixed; } // Closure, no callable — ver nota abajo
+interface GeneradorId            { nuevo(): string; }
+interface GeneradorXmlFirmado    { generar(Comprobante $c, DatosEmisor $e, CertificadoDigital $cert): string; }
+interface EnviadorComprobanteElectronico { enviar(Comprobante $c, string $xmlFirmado): ResultadoEnvio; }
 ```
+
+Pendientes (no bloquean Factura, pero están documentados desde el inicio): `AlmacenPrivado`, `GeneradorRepresentacionImpresa`, `NotificadorWebhook`.
+
+**Cambios respecto a la primera versión de este documento**, aprendidos al integrar Greenter de verdad (ver [05_SUNAT.md](05_SUNAT.md)):
+- `GeneradorXmlComprobante` + `FirmadorXml` (dos puertos separados) se **fusionaron** en `GeneradorXmlFirmado`: `Greenter\See::getXmlSigned()` genera y firma como una sola operación atómica, y forzar la separación no aportaba nada real.
+- `GestorTransacciones::ejecutar()` recibe `Closure`, no `callable` — es lo que `DB::transaction()` espera por debajo y evita perder el tipo genérico de retorno en Larastan.
+- Nuevos Value Objects de soporte: `CertificadoDigital` (contenido PEM descifrado, transitorio en memoria), `DatosEmisor` (Domain/Empresa — RUC/razón social/dirección del emisor, separado de Comprobante porque el emisor es responsabilidad de Empresa, no del agregado Comprobante), `TotalesComprobante` (desglose completo: gravada/exonerada/inafecta/gratuita/IGV/descuentos/total, no solo el total), `ResultadoEnvio` (distingue aceptado/aceptado-con-observaciones/rechazado/error-técnico).
 
 Implementaciones en `modules/Facturacion/Infrastructure/*`. El dominio nunca instancia una implementación concreta directamente.

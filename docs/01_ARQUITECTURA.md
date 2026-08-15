@@ -151,7 +151,8 @@ GET  /up  (health check nativo de Laravel)
 | Paquete | Para qué |
 |---|---|
 | `laravel/framework` ^13 | |
-| `greenter/greenter` | UBL, firma, envío SOAP, CDR — **verificar versión/compatibilidad PHP 8.5 antes de Fase 2** |
+| `greenter/greenter` | UBL, firma, envío SOAP, CDR — confirmado v5.3.0, requiere `ext-soap` (ver [05_SUNAT.md](05_SUNAT.md)) |
+| `luecano/numero-a-letras` | Monto en letras (Legend obligatorio SUNAT) — Greenter no lo resuelve |
 | `filament/filament` ^5.7 | Panel admin |
 | `spatie/laravel-permission` | Roles/permisos del panel |
 | `barryvdh/laravel-dompdf` | PDF de representación impresa |
@@ -199,9 +200,9 @@ Guías de remisión, detracciones, retenciones, percepciones, documentos especia
 ## 13. Riesgos abiertos a verificar antes de cada fase relevante
 
 - Formato vigente de series para NC/ND (Fase 5).
-- Rangos de código CDR que distinguen "aceptado con observaciones" de "rechazado" (Fase 3).
 - Contenido exacto del QR en representación impresa (antes de construir el PDF, Fase 5+).
-- Compatibilidad de `greenter/greenter` con PHP 8.5 y si requiere `ext-soap` (Fase 2 — este entorno no tiene `ext-soap` instalado todavía).
 - Regla de redondeo tributario exacta esperada por SUNAT.
+- Certificado de pruebas real para SUNAT BETA — pendiente de conseguir uno (el certificado autofirmado usado para probar `GeneradorXmlFirmadoGreenter` localmente no sirve ante SUNAT real).
+- `ext-soap` sigue sin instalarse en este entorno de desarrollo — bloquea cualquier uso de `Greenter\See` (confirmado: incluso `getXmlSigned()` sin enviar nada falla sin esta extensión, por cómo Greenter instancia su cliente SOAP en el constructor). Comando ya entregado al usuario: `sudo apt install php8.5-soap`.
 
-Ver [05_SUNAT.md](05_SUNAT.md) para el detalle normativo a medida que se confirme cada punto.
+Resueltos y ya no son riesgos abiertos (ver [05_SUNAT.md](05_SUNAT.md) para el detalle): nombre/versión de `greenter/greenter`, si requiere `ext-soap`, rangos de código CDR (código `0` = aceptado, con notas = observaciones, ≠0 = rechazado — confirmado por la forma de `CdrResponse`), endpoints beta/producción reales.
