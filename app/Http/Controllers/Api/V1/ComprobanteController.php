@@ -24,6 +24,19 @@ final class ComprobanteController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        // Validado explícito: sin esto, un fecha_desde/fecha_hasta mal
+        // formado revienta en Carbon::parse() como excepción no controlada
+        // (Request::date() no valida) y termina en 500 genérico en vez de
+        // un 422 claro — encontrado en revisión de código, no en runtime.
+        $request->validate([
+            'tipo' => ['sometimes', 'string'],
+            'estado' => ['sometimes', 'string'],
+            'serie' => ['sometimes', 'string'],
+            'fecha_desde' => ['sometimes', 'date'],
+            'fecha_hasta' => ['sometimes', 'date'],
+            'por_pagina' => ['sometimes', 'integer'],
+        ]);
+
         $query = ComprobanteEloquent::query()
             ->where('empresa_id', $request->attributes->get('empresa_id'));
 
@@ -48,7 +61,7 @@ final class ComprobanteController extends Controller
         }
 
         $comprobantes = $query->orderByDesc('created_at')
-            ->paginate(perPage: min($request->integer('por_pagina', 20), 100));
+            ->paginate(perPage: min(max($request->integer('por_pagina', 20), 1), 100));
 
         return RespuestaApi::exito(
             $comprobantes->map($this->transformarFila(...))->all(),

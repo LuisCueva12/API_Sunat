@@ -36,7 +36,13 @@ final class AsignadorCorrelativoPostgres implements AsignadorCorrelativo
                 );
             }
 
-            if (! $fila->activa) {
+            // DB::table() (query builder puro) no castea columnas boolean
+            // como Eloquent: pdo_pgsql puede devolver el nativo bool o el
+            // string 't'/'f' según versión/driver — un "! $fila->activa"
+            // directo es un bug real si llega como 'f' (string no vacío,
+            // truthy en PHP). Normalizar explícitamente, nunca confiar en
+            // la coerción de PHP para un valor de origen ambiguo.
+            if (! $this->esVerdadero($fila->activa)) {
                 throw new SerieInvalidaException("La serie {$serie->valor()} está inactiva.");
             }
 
@@ -51,5 +57,14 @@ final class AsignadorCorrelativoPostgres implements AsignadorCorrelativo
 
             return new NumeroComprobante($serie, $nuevoCorrelativo);
         });
+    }
+
+    private function esVerdadero(mixed $valor): bool
+    {
+        if (is_bool($valor)) {
+            return $valor;
+        }
+
+        return in_array($valor, ['t', '1', 1, true], true);
     }
 }

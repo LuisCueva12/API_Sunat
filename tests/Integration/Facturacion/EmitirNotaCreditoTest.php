@@ -41,6 +41,12 @@ beforeEach(function () {
         receptorRazonSocial: 'Cliente SAC',
         items: [new ItemInput('Servicio', 'NIU', 1.0, '100.00', '10')],
     ));
+
+    // Una nota de crédito solo puede referenciar un comprobante ya aceptado
+    // por SUNAT (ver ValidadorNotaCredito) — todavía no existe el pipeline
+    // de envío/CDR que haría esta transición de verdad, así que se simula
+    // directo en BD para probar el escenario real.
+    DB::table('comprobantes')->where('id', $this->facturaOriginal->id())->update(['estado' => 'ACEPTADO']);
 });
 
 it('emite una nota de crédito referenciando una factura existente', function () {
@@ -64,6 +70,22 @@ it('emite una nota de crédito referenciando una factura existente', function ()
         ->and($fila->tipo_nota)->toBe('01')
         ->and($fila->motivo_nota)->toBe('Anulación de la operación');
 });
+
+it('rechaza una nota de crédito sobre una factura que SUNAT todavía no aceptó', function () {
+    DB::table('comprobantes')->where('id', $this->facturaOriginal->id())->update(['estado' => 'REGISTRADO']);
+
+    app(EmitirNotaCredito::class)->ejecutar(new EmitirComprobanteInput(
+        empresaId: $this->empresa->id,
+        serie: 'FC01',
+        receptorTipoDocumento: '6',
+        receptorNumeroDocumento: '20100070970',
+        receptorRazonSocial: 'Cliente SAC',
+        items: [new ItemInput('Devolución', 'NIU', 1.0, '100.00', '10')],
+        comprobanteReferenciaId: $this->facturaOriginal->id(),
+        codigoMotivo: '01',
+        descripcionMotivo: 'Motivo',
+    ));
+})->throws(ComprobanteInvalidoException::class);
 
 it('rechaza una nota de crédito sin comprobante de referencia', function () {
     app(EmitirNotaCredito::class)->ejecutar(new EmitirComprobanteInput(

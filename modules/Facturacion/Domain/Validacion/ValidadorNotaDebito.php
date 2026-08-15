@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Facturacion\Domain\Validacion;
 
 use Modules\Facturacion\Domain\Comprobante\Comprobante;
+use Modules\Facturacion\Domain\Comprobante\EstadoComprobante;
 use Modules\Facturacion\Domain\Comprobante\TipoComprobante;
 use Modules\Facturacion\Domain\Excepciones\ComprobanteInvalidoException;
 use Modules\Facturacion\Domain\Puertos\RepositorioComprobante;
@@ -39,6 +40,10 @@ final class ValidadorNotaDebito implements ValidadorComprobante
 
         if (! in_array($original->tipo(), [TipoComprobante::Factura, TipoComprobante::Boleta], true)) {
             throw new ComprobanteInvalidoException('Una nota de débito solo puede referenciar una factura o una boleta.');
+        }
+
+        if (! in_array($original->estado(), [EstadoComprobante::Aceptado, EstadoComprobante::AceptadoConObservaciones], true)) {
+            throw new ComprobanteInvalidoException('Solo se puede emitir una nota de débito sobre un comprobante ya aceptado por SUNAT.');
         }
 
         if (count($comprobante->items()) === 0) {
