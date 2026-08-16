@@ -26,6 +26,8 @@ function repositorioComprobanteFalso(?Comprobante $comprobanteExistente): Reposi
 
         public function guardar(Comprobante $comprobante): void {}
 
+        public function actualizarEstado(Comprobante $comprobante, ?string $xmlSha256 = null, ?string $cdrSha256 = null): void {}
+
         public function buscarPorId(string $empresaId, string $id): ?Comprobante
         {
             return $this->existente;

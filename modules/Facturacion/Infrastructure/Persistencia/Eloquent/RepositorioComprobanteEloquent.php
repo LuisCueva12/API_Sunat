@@ -95,6 +95,36 @@ final class RepositorioComprobanteEloquent implements RepositorioComprobante
         }
     }
 
+    public function actualizarEstado(
+        Comprobante $comprobante,
+        ?string $xmlSha256 = null,
+        ?string $cdrSha256 = null,
+    ): void {
+        // estado/intentos_envio/ultimo_error siempre reflejan el estado
+        // actual de la entidad (incluye "limpiar" ultimo_error a null al
+        // pasar a un estado de éxito). xml_sha256/cdr_sha256 en cambio son
+        // artefactos que se fijan una sola vez en pasos distintos del
+        // pipeline — solo se tocan si esta llamada los trae.
+        $datos = [
+            'estado' => $comprobante->estado()->value,
+            'intentos_envio' => $comprobante->intentosEnvio(),
+            'ultimo_error' => $comprobante->ultimoError(),
+        ];
+
+        if ($xmlSha256 !== null) {
+            $datos['xml_sha256'] = $xmlSha256;
+        }
+
+        if ($cdrSha256 !== null) {
+            $datos['cdr_sha256'] = $cdrSha256;
+        }
+
+        ComprobanteEloquent::query()
+            ->where('id', $comprobante->id())
+            ->where('empresa_id', $comprobante->empresaId())
+            ->update($datos);
+    }
+
     public function buscarPorId(string $empresaId, string $id): ?Comprobante
     {
         $fila = ComprobanteEloquent::query()
@@ -136,6 +166,7 @@ final class RepositorioComprobanteEloquent implements RepositorioComprobante
                 total: Dinero::desde((string) $fila->total),
             ),
             intentosEnvio: $fila->intentos_envio,
+            ultimoError: $fila->ultimo_error,
         );
 
         foreach ($fila->items as $itemFila) {

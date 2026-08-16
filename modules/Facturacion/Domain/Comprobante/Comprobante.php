@@ -37,6 +37,7 @@ final class Comprobante
         private readonly ?ReferenciaComprobante $referencia,
         private ?TotalesComprobante $totales,
         private int $intentosEnvio,
+        private ?string $ultimoError = null,
     ) {}
 
     public static function registrar(
@@ -84,6 +85,7 @@ final class Comprobante
         ?ReferenciaComprobante $referencia,
         ?TotalesComprobante $totales,
         int $intentosEnvio,
+        ?string $ultimoError = null,
     ): self {
         return new self(
             id: $id,
@@ -98,6 +100,7 @@ final class Comprobante
             referencia: $referencia,
             totales: $totales,
             intentosEnvio: $intentosEnvio,
+            ultimoError: $ultimoError,
         );
     }
 
@@ -147,10 +150,11 @@ final class Comprobante
         $this->transicionarA(EstadoComprobante::Rechazado);
     }
 
-    public function marcarError(): void
+    public function marcarError(?string $mensaje = null): void
     {
         $this->transicionarA(EstadoComprobante::Error);
         $this->intentosEnvio++;
+        $this->ultimoError = $mensaje;
     }
 
     public function reintentar(): void
@@ -221,6 +225,11 @@ final class Comprobante
     public function intentosEnvio(): int
     {
         return $this->intentosEnvio;
+    }
+
+    public function ultimoError(): ?string
+    {
+        return $this->ultimoError;
     }
 
     /** @return ItemComprobante[] */

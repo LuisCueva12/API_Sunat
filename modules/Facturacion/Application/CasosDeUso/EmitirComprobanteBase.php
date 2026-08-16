@@ -10,6 +10,7 @@ use Modules\Facturacion\Domain\Comprobante\Comprobante;
 use Modules\Facturacion\Domain\Comprobante\ReferenciaComprobante;
 use Modules\Facturacion\Domain\Comprobante\TipoComprobante;
 use Modules\Facturacion\Domain\Puertos\AsignadorCorrelativo;
+use Modules\Facturacion\Domain\Puertos\DespachadorProcesamiento;
 use Modules\Facturacion\Domain\Puertos\GeneradorId;
 use Modules\Facturacion\Domain\Puertos\GestorTransacciones;
 use Modules\Facturacion\Domain\Puertos\RepositorioComprobante;
@@ -37,13 +38,14 @@ abstract class EmitirComprobanteBase
         private readonly RepositorioComprobante $repositorio,
         private readonly CalculadorTributos $calculadorTributos,
         private readonly ValidadorComprobante $validador,
+        private readonly DespachadorProcesamiento $despachador,
     ) {}
 
     abstract protected function tipo(): TipoComprobante;
 
     public function ejecutar(EmitirComprobanteInput $input): Comprobante
     {
-        return $this->transacciones->ejecutar(function () use ($input) {
+        $comprobante = $this->transacciones->ejecutar(function () use ($input) {
             $numero = $this->asignadorCorrelativo->asignar(
                 $input->empresaId,
                 $this->tipo(),
@@ -98,6 +100,14 @@ abstract class EmitirComprobanteBase
 
             return $comprobante;
         });
+
+        // Fuera de la transacción a propósito: recién aquí es seguro saber
+        // que el comprobante quedó realmente confirmado en BD. Despachar
+        // el job dentro del closure arriesgaría encolar el procesamiento
+        // de un comprobante que un rollback posterior deja sin existir.
+        $this->despachador->despacharEnvio($comprobante->empresaId(), $comprobante->id());
+
+        return $comprobante;
     }
 
     private function construirReferencia(EmitirComprobanteInput $input): ?ReferenciaComprobante

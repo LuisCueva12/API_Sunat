@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Modules\Facturacion\Domain\Excepciones\ComprobanteInvalidoException;
+use Modules\Facturacion\Domain\Excepciones\ConfiguracionSunatInvalidaException;
 use Modules\Facturacion\Domain\Excepciones\SerieInvalidaException;
 use Modules\Facturacion\Domain\Excepciones\TransicionEstadoInvalidaException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
@@ -60,6 +61,14 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             return RespuestaApi::error('COMPROBANTE_INVALIDO', $e->getMessage(), 422);
+        });
+
+        $exceptions->render(function (ConfiguracionSunatInvalidaException $e, Request $request) {
+            if (! $request->is('api/*')) {
+                return null;
+            }
+
+            return RespuestaApi::error('EMPRESA_NO_CONFIGURADA', $e->getMessage(), 422);
         });
 
         $exceptions->render(function (TransicionEstadoInvalidaException $e, Request $request) {
