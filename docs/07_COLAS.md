@@ -1,34 +1,40 @@
 # Colas
 
-Driver: Redis. La API nunca espera el pipeline SUNAT — responde `202` tras `REGISTRADO` y encola.
+Driver: Redis (bloqueado en desarrollo hasta instalar `ext-redis`/servidor — ver `docs/01_ARQUITECTURA.md` §12). La API nunca espera el pipeline SUNAT — responde `202` tras `REGISTRADO` y encola.
 
 ## Jobs
 
+Implementado, un solo Job cubriendo generación→firma→envío→interpretación:
+
 ```text
-ProcesarComprobante        genera XML, firma, comprime ZIP
-EnviarComprobanteSunat     envía a SUNAT, guarda envios_sunat
-ProcesarRespuestaSunat     interpreta CDR, actualiza estado, genera PDF
-EnviarWebhook              entrega firmada HMAC a endpoints suscritos
+ProcesarComprobante (app/Jobs)
+  → resuelve ProcesarEnvioComprobante (Application) del contenedor y lo invoca
+  → GeneradorXmlFirmado: genera + firma XML (Greenter)
+  → AlmacenPrivado: guarda el XML firmado antes de arriesgar la llamada de red
+  → FabricaEnviadorComprobante + EnviadorComprobanteElectronico: envía a SUNAT
+  → guarda CDR, transiciona el estado (ACEPTADO/ACEPTADO_CON_OBSERVACIONES/
+    RECHAZADO/ERROR) según ResultadoEnvio
 ```
 
-Deliberadamente no se fragmenta más — cuatro jobs con responsabilidad clara, no docenas de jobs diminutos sin beneficio real.
+Se consolidó en un solo Job lo que `docs/01_ARQUITECTURA.md` original planteaba como 3 (ProcesarComprobante/EnviarComprobanteSunat/ProcesarRespuestaSunat): la orquestación real vive en el caso de uso `ProcesarEnvioComprobante` (Application), no en el Job — dividirlo en más Jobs solo movería código, no simplificaría nada, y el propio principio de "no crear docenas de jobs diminutos" ya pedía evitar la fragmentación excesiva. `EnviarWebhook` sigue pendiente (Fase 7, cuando exista el módulo de webhooks).
+
+Despachado desde `EmitirComprobanteBase` (los 4 casos de uso `Emitir*`) vía el puerto `DespachadorProcesamiento` — nunca `Bus::dispatch()` directo desde Application, que no depende de Illuminate.
 
 ## Reintentos
 
-Diferenciados por tipo de fallo:
+`ProcesarComprobante::$tries = 5`, backoff `[10, 30, 60, 300]` segundos.
 
 | Tipo de fallo | Comportamiento |
 |---|---|
-| Red / timeout / SUNAT no disponible | Reintenta con backoff exponencial + jitter, tope `facturacion.reintentos.maximo_intentos` (default 5) |
-| Rechazo tributario definitivo de SUNAT | **Nunca reintenta** — estado `RECHAZADO`, terminal |
-| Bug/excepción no esperada | Reintenta igual que error temporal, pero debe alertar (no debe pasar desapercibido) |
+| Red / timeout / SUNAT no disponible / certificado o credenciales faltantes | `ProcesarEnvioComprobante` marca el comprobante en `ERROR` (reintentable) y deja que Laravel reintente el Job según `$tries`/`backoff()` |
+| Rechazo tributario definitivo de SUNAT | **Nunca reintenta** — estado `RECHAZADO`, terminal, el Job termina exitosamente (no es un fallo del Job, es un resultado de negocio) |
 
-Job idempotente: verifica el estado actual del comprobante antes de actuar (las colas garantizan entrega *at-least-once*, un mismo job puede ejecutarse dos veces).
+El Job es idempotente por diseño: `ProcesarEnvioComprobante::iniciarProcesamiento()` verifica el estado actual antes de actuar — si el comprobante ya está en un estado terminal (ACEPTADO/ACEPTADO_CON_OBSERVACIONES/RECHAZADO), no hace nada. Cubre tanto reintentos legítimos (estado `ERROR`) como la entrega *at-least-once* de las colas (un mismo Job ejecutado dos veces).
 
-Cola de fallos inspeccionable vía `php artisan queue:failed` + comando propio `InspeccionarComprobantesFallidosCommand` que cruza `jobs_failed` con comprobantes en estado `ERROR`.
+Pendiente (Fase 9): comando propio para inspeccionar comprobantes en `ERROR` cruzado con `queue:failed`.
 
-No se implementa circuit breaker formal en V1 — el backoff + tope de intentos + cola de fallos inspeccionable es resiliencia suficiente sin la complejidad de un breaker dedicado. Se reevalúa con datos reales de fallos de SUNAT en producción.
+No se implementa circuit breaker formal en V1 — el backoff + tope de intentos es resiliencia suficiente sin la complejidad de un breaker dedicado. Se reevalúa con datos reales de fallos de SUNAT en producción.
 
-## request_id a través de async
+## request_id a través de async — gap conocido, no resuelto todavía
 
-El `request_id` originado en el request HTTP se propaga como parte del payload del Job y se registra en cada evento/log generado por los workers — sin esto se pierde trazabilidad entre el log síncrono y el asíncrono, que es exactamente lo que la plataforma no puede permitirse perder.
+El Job `ProcesarComprobante` recibe `empresaId`/`comprobanteId`/`entorno`, **no** `request_id` — no se hiló todavía desde el request HTTP original hasta el log del worker. Para cerrarlo: agregar `requestId` opcional a `EmitirComprobanteInput`, que los controladores llenen desde `$request->attributes->get('request_id')`, y que `EmitirComprobanteBase` se lo pase a `DespachadorProcesamiento::despacharEnvio()`. No implementado todavía — anotado aquí en vez de darlo por hecho.
