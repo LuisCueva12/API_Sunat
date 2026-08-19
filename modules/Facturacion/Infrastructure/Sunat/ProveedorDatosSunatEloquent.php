@@ -7,6 +7,7 @@ namespace Modules\Facturacion\Infrastructure\Sunat;
 use App\Models\CertificadoDigital as CertificadoDigitalEloquent;
 use App\Models\CredencialSunat as CredencialSunatEloquent;
 use App\Models\Empresa as EmpresaEloquent;
+use Illuminate\Support\Facades\DB;
 use Modules\Facturacion\Domain\Empresa\DatosEmisor;
 use Modules\Facturacion\Domain\Empresa\DatosSunatEmpresa;
 use Modules\Facturacion\Domain\Excepciones\ConfiguracionSunatInvalidaException;
@@ -46,13 +47,23 @@ final class ProveedorDatosSunatEloquent implements ProveedorDatosSunat
             );
         }
 
+        $establecimiento = DB::table('establecimientos')
+            ->where('empresa_id', $empresaId)
+            ->orderByDesc('es_principal')
+            ->orderBy('codigo')
+            ->first();
+
         return new DatosSunatEmpresa(
             emisor: new DatosEmisor(
                 ruc: new Ruc($empresa->ruc),
                 razonSocial: $empresa->razon_social,
                 nombreComercial: $empresa->nombre_comercial,
-                direccion: null,
-                ubigeo: null,
+                direccion: $establecimiento?->direccion,
+                ubigeo: $establecimiento?->ubigeo,
+                codigoLocal: $establecimiento->codigo ?? '0000',
+                departamento: $establecimiento?->departamento,
+                provincia: $establecimiento?->provincia,
+                distrito: $establecimiento?->distrito,
             ),
             certificado: new CertificadoDigital($certificado->contenido_cifrado),
             usuarioSol: $credencial->usuario_sol_cifrado,

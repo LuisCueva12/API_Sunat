@@ -79,12 +79,18 @@ it('mapea una factura del dominio a un Invoice de Greenter sin errores', functio
         nombreComercial: null,
         direccion: 'Av. Prueba 123',
         ubigeo: '150101',
+        departamento: 'LIMA',
+        provincia: 'LIMA',
+        distrito: 'LIMA',
     );
 
     $invoice = $mapeador->mapear(comprobanteFacturaCompleto(), $emisor);
 
     expect($invoice->getSerie())->toBe('F001')
         ->and($invoice->getCorrelativo())->toBe('1')
+        ->and($invoice->getTipoOperacion())->toBe('0101')
+        ->and($invoice->getFormaPago()?->getTipo())->toBe('Contado')
+        ->and($invoice->getCompany()->getAddress()->getCodLocal())->toBe('0000')
         ->and($invoice->getMtoImpVenta())->toBe(236.0)
         ->and($invoice->getDetails())->toHaveCount(1)
         ->and($invoice->getLegends())->toHaveCount(1)
@@ -102,6 +108,9 @@ it('genera un XML firmado bien formado a partir de una factura', function () {
         nombreComercial: null,
         direccion: 'Av. Prueba 123',
         ubigeo: '150101',
+        departamento: 'LIMA',
+        provincia: 'LIMA',
+        distrito: 'LIMA',
     );
 
     $xml = $generador->generar(comprobanteFacturaCompleto(), $emisor, certificadoDePruebaAutofirmado());
@@ -113,5 +122,17 @@ it('genera un XML firmado bien formado a partir de una factura', function () {
 
     expect($cargado)->toBeTrue('El XML generado debe ser XML bien formado')
         ->and($xml)->toContain('Invoice')
+        ->and($documento->getElementsByTagNameNS(
+            'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2',
+            'ProfileID',
+        )->item(0)?->nodeValue)->toBe('0101')
+        ->and($documento->getElementsByTagNameNS(
+            'urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2',
+            'PaymentTerms',
+        )->item(0)?->textContent)->toContain('FormaPagoContado')
+        ->and($documento->getElementsByTagNameNS(
+            'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2',
+            'CityName',
+        )->item(0)?->nodeValue)->toBe('LIMA')
         ->and($xml)->toContain('<ds:Signature');
-})->skip(fn () => ! extension_loaded('soap'), 'Greenter\\See instancia su cliente SOAP en el constructor incluso para solo firmar XML — requiere ext-soap aunque no se envíe nada a SUNAT.');
+});

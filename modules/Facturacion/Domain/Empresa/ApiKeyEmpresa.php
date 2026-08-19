@@ -13,6 +13,7 @@ final class ApiKeyEmpresa
     public const ESCOPOS_VALIDOS = [
         'comprobantes:crear',
         'comprobantes:leer',
+        'comprobantes:reintentar',
     ];
 
     /**

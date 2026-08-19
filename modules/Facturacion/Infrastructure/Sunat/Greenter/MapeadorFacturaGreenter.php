@@ -7,6 +7,7 @@ namespace Modules\Facturacion\Infrastructure\Sunat\Greenter;
 use Greenter\Model\Client\Client;
 use Greenter\Model\Company\Address;
 use Greenter\Model\Company\Company;
+use Greenter\Model\Sale\FormaPagos\FormaPagoContado;
 use Greenter\Model\Sale\Invoice;
 use Greenter\Model\Sale\Legend;
 use Greenter\Model\Sale\SaleDetail;
@@ -19,6 +20,8 @@ use Modules\Facturacion\Domain\ValueObjects\Dinero;
 final class MapeadorFacturaGreenter
 {
     private const TIPO_DOC_FACTURA = '01';
+
+    private const TIPO_OPERACION_VENTA_INTERNA = '0101';
 
     private const NOMBRES_MONEDA = [
         'PEN' => 'SOLES',
@@ -36,10 +39,12 @@ final class MapeadorFacturaGreenter
         $invoice = new Invoice;
         $invoice->setUblVersion('2.1')
             ->setTipoDoc(self::TIPO_DOC_FACTURA)
+            ->setTipoOperacion(self::TIPO_OPERACION_VENTA_INTERNA)
             ->setSerie($comprobante->numero()->serie()->valor())
             ->setCorrelativo((string) $comprobante->numero()->correlativo())
             ->setFechaEmision($comprobante->fechaEmision())
             ->setTipoMoneda($comprobante->moneda()->value)
+            ->setFormaPago(new FormaPagoContado)
             ->setCompany($this->mapearEmisor($emisor))
             ->setClient($this->mapearReceptor($comprobante))
             ->setMtoOperGravadas($this->float($totales->opGravada))
@@ -64,12 +69,14 @@ final class MapeadorFacturaGreenter
             ->setRazonSocial($emisor->razonSocial)
             ->setNombreComercial($emisor->nombreComercial);
 
-        if ($emisor->direccion !== null || $emisor->ubigeo !== null) {
-            $address = new Address;
-            $address->setDireccion($emisor->direccion)
-                ->setUbigueo($emisor->ubigeo);
-            $company->setAddress($address);
-        }
+        $address = new Address;
+        $address->setDireccion($emisor->direccion)
+            ->setUbigueo($emisor->ubigeo)
+            ->setCodLocal($emisor->codigoLocal)
+            ->setDepartamento($emisor->departamento)
+            ->setProvincia($emisor->provincia)
+            ->setDistrito($emisor->distrito);
+        $company->setAddress($address);
 
         return $company;
     }

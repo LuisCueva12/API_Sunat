@@ -7,6 +7,8 @@ namespace App\Console\Commands;
 use App\Models\ApiKey as ApiKeyEloquent;
 use App\Services\Certificados\GeneradorCertificadoAutofirmado;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Modules\Facturacion\Application\CasosDeUso\CrearApiKey;
 use Modules\Facturacion\Application\CasosDeUso\CrearCertificadoDigital;
 use Modules\Facturacion\Application\CasosDeUso\CrearCredencialSunat;
@@ -76,6 +78,34 @@ final class PrepararEntornoBeta extends Command
                 serie: $serie->valor(),
             ));
         }
+
+        DB::table('establecimientos')->upsert(
+            [[
+                'id' => (string) Str::uuid7(),
+                'empresa_id' => $empresa->id(),
+                'codigo' => '0000',
+                'denominacion' => 'Domicilio fiscal BETA',
+                'ubigeo' => '150101',
+                'departamento' => 'LIMA',
+                'provincia' => 'LIMA',
+                'distrito' => 'LIMA',
+                'direccion' => 'AV. PRUEBA 123',
+                'es_principal' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]],
+            ['empresa_id', 'codigo'],
+            [
+                'denominacion',
+                'ubigeo',
+                'departamento',
+                'provincia',
+                'distrito',
+                'direccion',
+                'es_principal',
+                'updated_at',
+            ],
+        );
 
         $certificado = $this->repositorioCertificado->buscarActivoPorEmpresa($empresa->id());
 

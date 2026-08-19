@@ -127,11 +127,13 @@ final class Comprobante
     public function marcarAceptado(): void
     {
         $this->transicionarA(EstadoComprobante::Aceptado);
+        $this->ultimoError = null;
     }
 
     public function marcarAceptadoConObservaciones(): void
     {
         $this->transicionarA(EstadoComprobante::AceptadoConObservaciones);
+        $this->ultimoError = null;
     }
 
     public function marcarRechazado(): void

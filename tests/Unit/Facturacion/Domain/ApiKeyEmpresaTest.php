@@ -33,6 +33,20 @@ it('rechaza un scope desconocido', function () {
     ApiKeyEmpresa::registrar('apikey-1', 'empresa-1', 'Nombre', 'prefijo', 'hash', ['comprobantes:eliminar'], null);
 })->throws(ApiKeyInvalidaException::class);
 
+it('permite el scope para reintentar comprobantes con error', function () {
+    $apiKey = ApiKeyEmpresa::registrar(
+        'apikey-1',
+        'empresa-1',
+        'Operación de reintentos',
+        'prefijo',
+        'hash',
+        ['comprobantes:reintentar'],
+        null,
+    );
+
+    expect($apiKey->scopes())->toContain('comprobantes:reintentar');
+});
+
 it('no está vigente si ya expiró', function () {
     $apiKey = ApiKeyEmpresa::reconstituir(
         id: 'apikey-1',

@@ -46,6 +46,17 @@ curl -X POST http://localhost:8000/api/v1/facturas \
 
 Fuente: [Manual del programador SEE - Sistemas del Contribuyente](https://cpe.sunat.gob.pe/sites/default/files/inline-files/manual_programador%20%281%29.pdf), sección Servicio Beta.
 
+### Resultado BETA verificado
+
+El 19 de agosto de 2026 se completó un envío real con el RUC y credenciales públicas de prueba. SUNAT devolvió código `0`, descripción de factura aceptada y un CDR sin observaciones para `F001-2`. El XML aceptado incluyó:
+
+- `cbc:ProfileID` `0101` con los atributos del catálogo SUNAT.
+- `cbc:InvoiceTypeCode` `01` con `listID="0101"`.
+- `cac:PaymentTerms` con `FormaPago` y `Contado`.
+- domicilio fiscal con código de local `0000`, ubigeo, departamento, provincia y distrito.
+
+Los errores BETA `3030`, `3205` y `3244` permitieron completar esos campos. En particular, la [matriz oficial de reglas de validación CPE](https://cpe.sunat.gob.pe/guias-y-manuales) confirma que `3244` exige el bloque de forma de pago, no el tipo de operación. El comando `facturacion:preparar-beta` provisiona todos los datos geográficos requeridos para repetir la prueba.
+
 ### Certificado de producción
 
 El alta acepta PEM o el archivo P12/PFX entregado por SUNAT o por una entidad acreditada. Verifica la contraseña, la vigencia y que la clave privada corresponda al certificado; luego normaliza el contenido a PEM y lo cifra en la base de datos. La contraseña de importación no se conserva.
@@ -58,14 +69,14 @@ La contraseña se solicita de forma oculta. El Certificado Digital Tributario gr
 
 ## Greenter
 
-Encapsulado íntegramente en `modules/Facturacion/Infrastructure/Sunat/Greenter/` — `GeneradorXmlGreenter`, `FirmadorXmlGreenter`, `ClienteSunatGreenter`, `ParserCdrGreenter`. Nada fuera de esa carpeta instancia clases de Greenter directamente.
+Encapsulado íntegramente en `modules/Facturacion/Infrastructure/Sunat/Greenter/`. El generador usa `InvoiceBuilder` y `SignedXml` para producir y firmar el XML sin inicializar el cliente SOAP; el cliente de envío y el parser CDR permanecen separados. Nada fuera de esa carpeta instancia clases de Greenter directamente.
 
 ## Greenter — confirmado por código fuente (2026-08-15)
 
 Verificado leyendo `vendor/greenter/greenter` directamente, no asumido:
 
 - Paquete correcto: `composer require greenter/greenter` (v5.3.0 al momento de instalar). Es un meta-paquete que agrupa `greenter/core`, `greenter/ws`, `greenter/xmldsig`, `greenter/xml`, etc.
-- **`ext-soap` es un requisito duro** (`greenter/ws`'s `composer.json` lo declara explícitamente) y no solo para enviar: `Greenter\See::__construct()` instancia `Greenter\Ws\Services\SoapClient extends \SoapClient` **incondicionalmente**, así que sin `ext-soap` ni siquiera `getXmlSigned()` (que no envía nada a SUNAT) funciona. Confirmado con un test real: `MapeadorFacturaGreenter` (no toca `See`) pasa sin `ext-soap`; `GeneradorXmlFirmadoGreenter` (usa `See`) falla con `Class "SoapClient" not found` hasta instalar la extensión.
+- **`ext-soap` es requisito duro para el envío** (`greenter/ws` lo declara y su cliente extiende `\SoapClient`). La generación y firma local ya no dependen de `Greenter\See`: usan `InvoiceBuilder` y `SignedXml`, por lo que sus pruebas offline funcionan sin cargar SOAP.
 - **Greenter sí genera PDF** (representación impresa) vía `packages/htmltopdf` + `packages/report` (usa `twig/twig` + `mikehaertl/phpwkhtmltopdf`, que a su vez necesita el binario `wkhtmltopdf` instalado en el sistema). Esto corrige lo que dije en la primera respuesta de este proyecto ("Greenter no genera PDF") — sí puede, con una dependencia de sistema adicional a evaluar cuando se llegue a esa pieza.
 - Endpoints SUNAT reales (`Greenter\Ws\Services\SunatEndpoints`):
   - `FE_BETA` = `https://e-beta.sunat.gob.pe/ol-ti-itcpfegem-beta/billService`
@@ -74,7 +85,7 @@ Verificado leyendo `vendor/greenter/greenter` directamente, no asumido:
   - `FE_CONSULTA_CDR` para consultar CDR por separado.
 - `See::send()`/`sendXml()`/`sendXmlFile()` devuelven `?BillResult` con `isSuccess()`, `getError()` (fallo técnico), `getCdrZip()` (ZIP crudo) y `getCdrResponse()` → `CdrResponse::getCode()/getDescription()/getNotes()/getReference()`. Confirma la lógica de interpretación ya documentada: código `0` sin notas = ACEPTADO, código `0` con notas = ACEPTADO_CON_OBSERVACIONES, código≠0 = RECHAZADO.
 - El Legend obligatorio (monto en letras, code `1000`) no lo resuelve Greenter — se usa `luecano/numero-a-letras` (`NumeroALetras::toInvoice()`), ya instalado.
-- Arquitectura ajustada: los puertos `GeneradorXmlComprobante` y `FirmadorXml` documentados originalmente se fusionaron en uno solo, `GeneradorXmlFirmado`, porque `See::getXmlSigned()` resuelve generación+firma como una sola operación atómica — forzar la separación no aportaba nada real.
+- Arquitectura ajustada: los puertos `GeneradorXmlComprobante` y `FirmadorXml` documentados originalmente se fusionaron en uno solo, `GeneradorXmlFirmado`; la infraestructura mantiene generación y firma como una operación atómica para el caso de uso.
 
 ## Pendiente de verificar antes de Fase 3 (no asumir — documentar aquí la fuente oficial en cuanto se confirme)
 

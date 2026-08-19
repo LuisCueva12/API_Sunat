@@ -87,6 +87,17 @@ it('permite reintentar solo desde ERROR', function () {
     expect($comprobante->estado())->toBe(EstadoComprobante::Procesando);
 });
 
+it('limpia el error anterior cuando un reintento es aceptado', function () {
+    $comprobante = comprobanteDePrueba();
+
+    $comprobante->marcarProcesando();
+    $comprobante->marcarError('SUNAT no disponible');
+    $comprobante->reintentar();
+    $comprobante->marcarAceptado();
+
+    expect($comprobante->ultimoError())->toBeNull();
+});
+
 it('nunca permite reintentar un comprobante RECHAZADO', function () {
     $comprobante = comprobanteDePrueba();
 

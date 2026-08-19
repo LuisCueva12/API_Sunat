@@ -14,5 +14,9 @@ final class DatosEmisor
         public readonly ?string $nombreComercial,
         public readonly ?string $direccion,
         public readonly ?string $ubigeo,
+        public readonly string $codigoLocal = '0000',
+        public readonly ?string $departamento = null,
+        public readonly ?string $provincia = null,
+        public readonly ?string $distrito = null,
     ) {}
 }
