@@ -12,7 +12,7 @@ Formato: la sección **Snapshot actual** siempre refleja el estado real del repo
 - Dominio de `Comprobante` (Factura/Boleta/NotaCredito/NotaDebito, agregado único con discriminador) — máquina de estados, validadores por tipo, cálculo de tributos (IGV 18%, solo gravado '10').
 - Alta de tenant completa: `Empresa`, `SerieEmpresa`, `CertificadoEmpresa`, `CredencialSunatEmpresa`, `ApiKeyEmpresa` — casos de uso `Crear*` con sus repositorios Eloquent, cifrado nativo (`Crypt`/`encrypted`), sin endpoints HTTP expuestos todavía (ver más abajo).
 - Integración Greenter (generación+firma XML UBL, envío SOAP, parseo CDR) — generación y firma verificadas localmente con `ext-soap`; todavía no se envió contra SUNAT BETA real.
-- Pipeline asíncrono (`ProcesarComprobante` Job + `ProcesarEnvioComprobante`), API HTTP v1 (7 endpoints, auth por API Key, idempotencia, rate limiting).
+- Pipeline asíncrono (`ProcesarComprobante` Job + `ProcesarEnvioComprobante`), API HTTP v1 (8 endpoints, auth por API Key, idempotencia, rate limiting y reintento explícito de errores).
 - Suite completa verificada con PostgreSQL 18, Redis 7 y `ext-soap`: **104 tests, 223 assertions, 0 fallos, 0 omitidos**. Incluye Unit, Integration, Feature y concurrencia real de correlativos.
 
 **Entorno local**:
@@ -29,6 +29,10 @@ Formato: la sección **Snapshot actual** siempre refleja el estado real del repo
 3. Panel administrativo (Fase 8) — primer lugar razonable para exponer las altas de empresa/certificado/credencial/API Key por HTTP.
 
 ## Registro
+
+### 2026-08-19 — Reintento operativo de comprobantes con error
+**Hecho**: endpoint `POST /api/v1/comprobantes/{id}/reintentar`, protegido por tenant y scope `comprobantes:reintentar`. Solo acepta comprobantes en `ERROR`, responde `409` para cualquier otro estado y vuelve a usar el pipeline asíncrono conservando `request_id`. `ProcesarComprobante` es único por empresa+comprobante durante una hora para evitar envíos simultáneos duplicados.
+**Sigue**: obtener certificado y credenciales de pruebas para completar el hito contra SUNAT BETA.
 
 ### 2026-08-19 — Trazabilidad HTTP hasta el worker asíncrono
 **Hecho**: `request_id` viaja desde el middleware HTTP por `EmitirComprobanteInput` y `DespachadorProcesamiento` hasta `ProcesarComprobante`. El Job registra como contexto compartido `request_id`, `empresa_id` y `comprobante_id`, que Laravel limpia entre ejecuciones del worker. Una prueba Feature verifica el header, la respuesta y el Job encolado.

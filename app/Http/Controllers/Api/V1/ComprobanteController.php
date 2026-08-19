@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Comprobante as ComprobanteEloquent;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Modules\Facturacion\Application\CasosDeUso\ReintentarComprobante;
 
 final class ComprobanteController extends Controller
 {
@@ -74,6 +75,21 @@ final class ComprobanteController extends Controller
             'estado' => $comprobante->estado,
             'actualizado_en' => $comprobante->updated_at->toIso8601String(),
         ]);
+    }
+
+    public function reintentar(Request $request, string $id, ReintentarComprobante $reintentar): JsonResponse
+    {
+        $comprobante = $reintentar->ejecutar(
+            (string) $request->attributes->get('empresa_id'),
+            $id,
+            $request->attributes->getString('request_id'),
+        );
+
+        return RespuestaApi::exito([
+            'id' => $comprobante->id(),
+            'estado' => $comprobante->estado()->value,
+            'reintento_programado' => true,
+        ], 202);
     }
 
     private function buscarOFallar(Request $request, string $id): ComprobanteEloquent

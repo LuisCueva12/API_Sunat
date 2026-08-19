@@ -25,3 +25,7 @@ Route::middleware(['api.key', 'api.scope:comprobantes:leer'])->group(function ()
     Route::get('/comprobantes/{id}', [ComprobanteController::class, 'show']);
     Route::get('/comprobantes/{id}/estado', [ComprobanteController::class, 'estado']);
 });
+
+Route::middleware(['api.key', 'api.scope:comprobantes:reintentar'])->group(function () {
+    Route::post('/comprobantes/{id}/reintentar', [ComprobanteController::class, 'reintentar']);
+});

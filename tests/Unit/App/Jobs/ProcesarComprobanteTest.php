@@ -39,6 +39,8 @@ it('comparte la trazabilidad HTTP con los logs del worker', function () {
         requestId: 'req-9841',
     );
 
+    expect($job->uniqueId())->toBe('empresa-1:comprobante-1');
+
     expect(fn () => $job->handle($casoDeUso))
         ->toThrow(ComprobanteInvalidoException::class);
 

@@ -11,7 +11,9 @@ use Modules\Facturacion\Domain\Comprobante\Comprobante;
 
 trait InteractuaConComprobantes
 {
-
+    /**
+     * @param  array<string, mixed>  $validado
+     */
     protected function construirInput(array $validado, Request $request): EmitirComprobanteInput
     {
         return new EmitirComprobanteInput(

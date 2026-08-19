@@ -6,6 +6,7 @@ use App\Jobs\ProcesarComprobante;
 use App\Models\ApiKey as ApiKeyEloquent;
 use App\Models\Comprobante as ComprobanteEloquent;
 use App\Models\Empresa as EmpresaEloquent;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
@@ -102,6 +103,64 @@ it('propaga el request id al procesamiento asíncrono', function () {
         fn (ProcesarComprobante $job): bool => $job->requestId === $requestId
             && $job->empresaId === $empresa->id,
     );
+});
+
+it('programa el reintento de un comprobante en error', function () {
+    [$empresa, $apiKey] = crearEmpresaConApiKey(scopes: [
+        'comprobantes:crear',
+        'comprobantes:leer',
+        'comprobantes:reintentar',
+    ]);
+    crearSerieFactura($empresa->id);
+
+    $this->withHeader('Authorization', "Bearer {$apiKey}")
+        ->postJson('/api/v1/facturas', payloadFacturaValida())
+        ->assertStatus(202);
+
+    $comprobante = ComprobanteEloquent::query()->firstOrFail();
+    $comprobante->update(['estado' => 'ERROR', 'ultimo_error' => 'SUNAT no disponible']);
+
+    Cache::flush();
+    Queue::fake();
+
+    $requestId = 'req-reintento-9841';
+
+    $this->withHeaders([
+        'Authorization' => "Bearer {$apiKey}",
+        'X-Request-Id' => $requestId,
+    ])->postJson("/api/v1/comprobantes/{$comprobante->id}/reintentar")
+        ->assertStatus(202)
+        ->assertJsonPath('data.id', $comprobante->id)
+        ->assertJsonPath('data.estado', 'ERROR')
+        ->assertJsonPath('data.reintento_programado', true);
+
+    Queue::assertPushed(
+        ProcesarComprobante::class,
+        fn (ProcesarComprobante $job): bool => $job->comprobanteId === $comprobante->id
+            && $job->requestId === $requestId,
+    );
+});
+
+it('rechaza reintentar un comprobante que no está en error', function () {
+    [$empresa, $apiKey] = crearEmpresaConApiKey(scopes: [
+        'comprobantes:crear',
+        'comprobantes:reintentar',
+    ]);
+    crearSerieFactura($empresa->id);
+
+    $this->withHeader('Authorization', "Bearer {$apiKey}")
+        ->postJson('/api/v1/facturas', payloadFacturaValida())
+        ->assertStatus(202);
+
+    $comprobante = ComprobanteEloquent::query()->firstOrFail();
+    Queue::fake();
+
+    $this->withHeader('Authorization', "Bearer {$apiKey}")
+        ->postJson("/api/v1/comprobantes/{$comprobante->id}/reintentar")
+        ->assertStatus(409)
+        ->assertJsonPath('error.codigo', 'TRANSICION_INVALIDA');
+
+    Queue::assertNothingPushed();
 });
 
 it('rechaza sin header de autorización', function () {

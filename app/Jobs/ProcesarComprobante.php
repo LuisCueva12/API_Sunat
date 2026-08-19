@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -12,11 +13,13 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Modules\Facturacion\Application\CasosDeUso\ProcesarEnvioComprobante;
 
-final class ProcesarComprobante implements ShouldQueue
+final class ProcesarComprobante implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 5;
+
+    public int $uniqueFor = 3600;
 
     public function __construct(
         public readonly string $empresaId,
@@ -25,9 +28,15 @@ final class ProcesarComprobante implements ShouldQueue
         public readonly ?string $requestId = null,
     ) {}
 
+    /** @return array<int, int> */
     public function backoff(): array
     {
         return [10, 30, 60, 300];
+    }
+
+    public function uniqueId(): string
+    {
+        return "{$this->empresaId}:{$this->comprobanteId}";
     }
 
     public function handle(ProcesarEnvioComprobante $procesarEnvioComprobante): void

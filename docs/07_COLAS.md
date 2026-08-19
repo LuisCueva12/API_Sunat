@@ -24,6 +24,8 @@ Despachado desde `EmitirComprobanteBase` (los 4 casos de uso `Emitir*`) vía el 
 
 `ProcesarComprobante::$tries = 5`, backoff `[10, 30, 60, 300]` segundos.
 
+El Job implementa unicidad por `empresa_id + comprobante_id` durante una hora. Varias solicitudes de reintento concurrentes pueden responder que el reintento fue programado, pero Laravel solo conserva un Job activo para ese comprobante.
+
 | Tipo de fallo | Comportamiento |
 |---|---|
 | Red / timeout / SUNAT no disponible / certificado o credenciales faltantes | `ProcesarEnvioComprobante` marca el comprobante en `ERROR` (reintentable) y deja que Laravel reintente el Job según `$tries`/`backoff()` |
