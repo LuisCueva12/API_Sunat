@@ -2,7 +2,7 @@
 
 PostgreSQL. Convenciones generales:
 
-- Identificadores públicos (empresas, comprobantes, series, api_keys, certificados, credenciales, webhooks): `uuid` v7 (`Str::uuid7()` / trait `HasUuids` de Laravel).
+- Identificadores públicos (empresas, comprobantes, series, oauth_clients, certificados, credenciales, webhooks): `uuid` v7 (`Str::uuid7()` / trait `HasUuids` de Laravel).
 - Logs append-only sin referencia externa (`eventos_comprobante`, `entregas_webhook`, `auditorias`): `bigserial` — más barato, el orden de inserción ya es su propósito.
 - Dinero: `NUMERIC(12,2)`, nunca `float`/`double`.
 - Nada de `SoftDeletes` genérico de Laravel — cada tabla que lo necesita tiene su propio `estado` explícito (`ACTIVA`/`INACTIVA`/`REVOCADA`/etc.), más preciso que un `deleted_at` indiferenciado.
@@ -87,18 +87,22 @@ ALTER TABLE series ADD CONSTRAINT series_unicas
 | usuario_sol_cifrado, clave_sol_cifrada | text | cifrados |
 | estado | varchar | ACTIVA / INACTIVA |
 
-### api_keys
+### oauth_clients (Laravel Passport + columnas propias)
+
+No hay tabla `integraciones_api` separada — la integración de una empresa con la API **es** un `oauth_client` de Passport. Migraciones estándar del paquete (`oauth_clients`, `oauth_access_tokens`, `oauth_refresh_tokens`, `oauth_auth_codes`, `oauth_device_codes`) más una migración propia que extiende `oauth_clients`:
 
 | Campo | Tipo | Notas |
 |---|---|---|
-| id | uuid | |
-| empresa_id | uuid FK | |
-| nombre | varchar | |
-| prefijo | varchar(12) | parte visible, ej. `sf_live_ab12`, indexado para lookup rápido |
-| hash | varchar(255) | UNIQUE, hash de la key completa — la key completa nunca se persiste |
-| scopes | jsonb | ej. `["comprobantes:crear","comprobantes:leer"]` |
-| ultimo_uso_at, expira_at | timestamptz | nullable |
-| estado | varchar | ACTIVA / REVOCADA |
+| id | uuid | PK, generado por Passport — es el `client_id` |
+| owner_type, owner_id | varchar, uuid | nativos de Passport (`nullableMorphs('owner')`); `owner_id` se retipó de `bigint` a `uuid` en migración propia porque todo este proyecto usa UUID como PK. Apunta a `App\Models\Empresa` |
+| name | varchar | nombre visible de la integración |
+| secret | varchar | hasheado por Passport (`Client::secret()` accessor) — nunca en texto plano |
+| grant_types | jsonb | siempre `["client_credentials"]` — único grant habilitado |
+| scopes | jsonb | **columna propia**, nullable. Sin ella `Client::hasScope()` permite cualquier scope registrado — es el mecanismo real de "principio de mínimo privilegio" por integración |
+| ultimo_uso_at | timestamptz | **columna propia**, nullable — Passport no trackea uso, se actualiza en cada request autenticado (`ResolverEmpresaIntegracion` middleware) |
+| revoked | boolean | revocar también revoca `oauth_access_tokens` del cliente (`GestorClientesOAuthPassport::revocar()`) — revocar solo el cliente no invalida tokens ya emitidos |
+
+Reemplaza la tabla `api_keys` (implementación propia, eliminada 2026-08-19 al migrar a Passport/OAuth2 antes de tener integraciones reales — ver [01_ARQUITECTURA.md](01_ARQUITECTURA.md)).
 
 ### comprobantes
 
@@ -117,7 +121,7 @@ ALTER TABLE series ADD CONSTRAINT series_unicas
 | snapshot_emisor | jsonb | razón social/dirección de la empresa al momento de emitir |
 | idempotency_key, xml_sha256, cdr_sha256 | | |
 | intentos_envio, ultimo_error | int, text | |
-| api_key_id, creado_por | uuid FK | nullable — quién lo originó |
+| oauth_client_id, creado_por | uuid FK | nullable — quién lo originó (FK a `oauth_clients`, antes `api_key_id` → `api_keys`) |
 | created_at, updated_at | timestamptz | |
 
 ### comprobante_items
@@ -162,7 +166,7 @@ Agregado por tipo de tributo a nivel de comprobante (no por línea — eso ya es
 | id | bigserial | log append-only |
 | comprobante_id, empresa_id | uuid FK | empresa_id denormalizado para queries eficientes |
 | tipo_evento | varchar | ver [02_DOMINIO.md](02_DOMINIO.md) |
-| actor | varchar | `api_key:{id}` / `usuario:{id}` / `system` |
+| actor | varchar | `integracion:{oauth_client_id}` / `usuario:{id}` / `system` |
 | request_id | varchar | |
 | datos | jsonb | nunca secretos |
 | created_at | timestamptz | sin updated_at — es inmutable |
@@ -196,7 +200,7 @@ Agregado por tipo de tributo a nivel de comprobante (no por línea — eso ya es
 | Campo | Tipo |
 |---|---|
 | id | bigserial |
-| empresa_id, usuario_id, api_key_id | FK, nullable |
+| empresa_id, usuario_id, oauth_client_id | FK, nullable |
 | accion | varchar (ej. `empresa.actualizada`, `certificado.rotado`) |
 | entidad_tipo, entidad_id | varchar |
 | ip | inet |

@@ -44,6 +44,15 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+
+        // Integraciones máquina-a-máquina (POS/ERP/ecommerce) vía OAuth2
+        // client_credentials. 'provider' es requerido por Passport aunque
+        // este grant no autentica ningún Usuario — el tenant se resuelve
+        // desde el oauth_client (ver Modules\Facturacion\Domain\Empresa\IntegracionApi).
+        'api' => [
+            'driver' => 'passport',
+            'provider' => 'users',
+        ],
     ],
 
     /*

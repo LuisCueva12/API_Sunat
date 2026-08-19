@@ -1,6 +1,6 @@
 # API v1
 
-Base: `/api/v1`. Autenticación: `Authorization: Bearer <api_key>`. Idempotencia: header opcional `Idempotency-Key` en los 4 endpoints de emisión.
+Base: `/api/v1`. Autenticación: OAuth2 `client_credentials` (Laravel Passport) — `Authorization: Bearer <access_token>`, obtenido en `POST /oauth/token` con `client_id`+`client_secret` (ver [06_SEGURIDAD.md](06_SEGURIDAD.md)). Idempotencia: header opcional `Idempotency-Key` en los 4 endpoints de emisión.
 
 Detalle completo (request/response/errores por campo) se agrega en OpenAPI (`openapi/openapi.yaml`) a medida que cada endpoint se implementa — este documento es el contrato de alto nivel, la fuente exacta es el YAML.
 
@@ -37,7 +37,7 @@ Error (nunca stack traces ni excepciones internas):
 | GET | `/comprobantes/{id}/eventos` | — | trazabilidad completa |
 | POST | `/comprobantes/{id}/reintentar` | — | 409 si el estado no es `ERROR` |
 | GET | `/comprobantes/{id}/xml` \| `/cdr` \| `/pdf` | — | descarga desde disco privado |
-| GET | `/empresas/actual` | — | info de la empresa dueña del API Key |
+| GET | `/empresas/actual` | — | info de la empresa dueña de la integración autenticada |
 | GET | `/up` | — | health check nativo de Laravel |
 
 Emisión específica por tipo (contrato de entrada difiere genuinamente) + consulta/ciclo de vida genérico sobre `/comprobantes` (recurso uniforme una vez creado). Justificación completa en [01_ARQUITECTURA.md](01_ARQUITECTURA.md) §7.
@@ -50,4 +50,4 @@ Webhooks: gestión solo desde el panel en V1, no expuesta por API todavía (se a
 
 ## Autorización
 
-Scopes por API Key: `comprobantes:crear`, `comprobantes:leer`, `comprobantes:reintentar`. `empresa_id` siempre se deriva del API Key autenticado — **nunca** se acepta como campo del body/query (evita IDOR entre tenants).
+Scopes por integración (catálogo `ScopeApi`): `comprobantes:crear`, `comprobantes:leer`, `comprobantes:reintentar`. `empresa_id` siempre se deriva del cliente OAuth autenticado — **nunca** se acepta como campo del body/query (evita IDOR entre tenants).

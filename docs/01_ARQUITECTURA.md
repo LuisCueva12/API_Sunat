@@ -63,10 +63,12 @@ seleccionados por factory según `tipo`.
 4. **Integración SUNAT** — adaptadores Greenter, envío, procesamiento CDR, reintentos.
 5. **Documentos** — generación/almacenamiento de XML, CDR, PDF, hashes.
 6. **Webhooks** — configuración, firma HMAC, entrega, reintentos.
-7. **Identidad/Seguridad** — usuarios panel, API Keys, autenticación/autorización.
+7. **Identidad/Seguridad** — usuarios panel, integraciones API (Passport/OAuth2), autenticación/autorización.
 8. **Auditoría** — transversal.
 9. **Panel Administrativo** (Interfaces) — Filament sobre los mismos casos de uso.
 10. **API Pública** (Interfaces) — controladores v1, FormRequests, API Resources, OpenAPI.
+11. **Clientes** — módulo nuevo, planeado (ver §14): entidad `Cliente` por empresa, autocompleta el receptor al emitir. No reemplaza el snapshot desnormalizado en `comprobantes.receptor_*`.
+12. **Integraciones** — envuelve Passport (implementado 2026-08-19): `IntegracionApi` con metadata de negocio (nombre, scopes, último uso) sobre el `oauth_client` nativo. Ver §14.
 
 ## 4. Árbol de carpetas
 
@@ -151,6 +153,7 @@ GET  /up  (health check nativo de Laravel)
 | Paquete | Para qué |
 |---|---|
 | `laravel/framework` ^13 | |
+| `laravel/passport` ^13 | OAuth2 para integraciones máquina-a-máquina (`client_credentials`) — reemplazó la implementación propia de API Keys el 2026-08-19, ver §14 |
 | `greenter/greenter` | UBL, firma, envío SOAP, CDR — confirmado v5.3.0, requiere `ext-soap` (ver [05_SUNAT.md](05_SUNAT.md)) |
 | `luecano/numero-a-letras` | Monto en letras (Legend obligatorio SUNAT) — Greenter no lo resuelve |
 | `filament/filament` ^5.7 | Panel admin |
@@ -162,7 +165,7 @@ GET  /up  (health check nativo de Laravel)
 | `qossmic/deptrac` | Enforcement de límites de capa |
 | `league/flysystem-aws-s3-v3` | Storage S3 (solo producción) |
 
-No se agregan paquetes para UUID v7, rate limiting, cliente HTTP, cifrado — Laravel ya los provee. No se usa Sanctum para API Keys (implementación propia, más simple dado el requisito de prefijo+scopes+empresa_id). No se usa `brick/money` — VO `Dinero` propio basado en enteros (centavos), evita depender de la extensión `bcmath` (no disponible en este entorno) y evita float.
+No se agregan paquetes para UUID v7, rate limiting, cliente HTTP, cifrado — Laravel ya los provee. No se usa Sanctum en ningún punto: para integraciones API se usa Passport (OAuth2 real, ver §14); para el panel, sesión web estándar de Laravel/Filament — ninguno de los dos casos es "una SPA con tokens ligeros", que es el caso de uso que Sanctum resuelve. No se usa `brick/money` — VO `Dinero` propio basado en enteros (centavos), evita depender de la extensión `bcmath` (no disponible en este entorno) y evita float.
 
 ## 9. Qué resuelve Greenter vs. qué construimos nosotros
 
@@ -187,15 +190,18 @@ No se agregan paquetes para UUID v7, rate limiting, cliente HTTP, cifrado — La
 
 ## 11. Explícitamente fuera de alcance V1
 
-Guías de remisión, detracciones, retenciones, percepciones, documentos especiales, comunicación de baja SUNAT (se cubre con Nota de Crédito), modelo OSE, portal self-service por empresa, circuit breaker formal, CQRS/Event Sourcing completo, microservicios/Kubernetes/Kafka, multi-región, PLE, carga masiva, app móvil nativa.
+Guías de remisión, detracciones, retenciones, percepciones, documentos especiales, comunicación de baja SUNAT (se cubre con Nota de Crédito hasta que se implemente — ver riesgo abierto en §13), modelo OSE, circuit breaker formal, CQRS/Event Sourcing completo, microservicios/Kubernetes/Kafka, multi-región, PLE, carga masiva, app móvil nativa.
+
+**Ya no está fuera de alcance** (decisión tomada 2026-08-19, ver §14): portal self-service por empresa (`/app`, panel Filament separado del interno `/admin`) — pasó de "fuera de alcance V1" a "parte del MVP", pendiente de construir.
 
 ## 12. Decisiones abiertas / asunciones activas
 
 | # | Asunción | Impacto si cambia |
 |---|---|---|
-| 1 | Panel V1 es interno (equipo operador), no portal por empresa | Modelo de autorización de `usuarios` |
-| 2 | Boletas se envían individualmente (`sendBill`), no por resumen diario consolidado | Pipeline de Boleta en Fase 5 |
-| 3 | Modelo SEE - Del Contribuyente confirmado (no OSE) | Todo el diseño de credenciales/certificados |
+| 1 | Boletas se envían individualmente (`sendBill`), no por resumen diario consolidado | Pipeline de Boleta en Fase 5 |
+| 2 | Modelo SEE - Del Contribuyente confirmado (no OSE) | Todo el diseño de credenciales/certificados |
+
+**Resuelta 2026-08-19** (ver §14): el panel V1 deja de ser exclusivamente interno — se confirma un segundo panel self-service por empresa (`/app`), además del interno (`/admin`). Impacta el modelo de autorización de `usuarios` (roles `empresa_admin`/`facturador`/`contador`/`empleado`, `empresa_id` obligatorio para esos roles) — todavía no construido, ver §14 para el roadmap.
 
 ## 13. Riesgos abiertos a verificar antes de cada fase relevante
 
@@ -206,3 +212,20 @@ Guías de remisión, detracciones, retenciones, percepciones, documentos especia
 - `ext-soap`, `ext-redis` e `igbinary` están instalados permanentemente en el entorno de desarrollo; PostgreSQL y Redis operan en los puertos estándar `5432` y `6379`.
 
 Resueltos y ya no son riesgos abiertos (ver [05_SUNAT.md](05_SUNAT.md) para el detalle): nombre/versión de `greenter/greenter`, si requiere `ext-soap`, rangos de código CDR (código `0` = aceptado, con notas = observaciones, ≠0 = rechazado — confirmado por la forma de `CdrResponse`), endpoints beta/producción reales.
+
+## 14. Evolución a plataforma SaaS multiempresa (2026-08-19)
+
+Decisión explícita del usuario: el producto deja de ser solo una API interna y se convierte progresivamente en una plataforma SaaS con dos formas de uso — panel web self-service por empresa y API pública para integraciones (POS/ERP/ecommerce). Sigue siendo **monolito modular** (`modules/Facturacion/{Domain,Application,Infrastructure}` + `app/`), no microservicios — la filosofía arquitectónica de este documento no cambia, solo se amplía el alcance del producto.
+
+**Implementado:**
+- **Passport/OAuth2** reemplaza por completo el sistema de API Keys propio (`api_keys`, `ApiKeyEmpresa`, `GeneradorClaveApi` — eliminados, no coexisten). Grant `client_credentials` (único habilitado, es el correcto para integraciones máquina-a-máquina sin usuario delegando). `IntegracionApi` (Domain) es metadata de negocio sobre el `oauth_client` nativo de Passport (`owner_type`/`owner_id` → `Empresa`, columna propia `scopes` para restringir por integración, columna propia `ultimo_uso_at`). Ver [02_DOMINIO.md](02_DOMINIO.md), [03_BASE_DATOS.md](03_BASE_DATOS.md) y [06_SEGURIDAD.md](06_SEGURIDAD.md) para el detalle. Verificado en vivo contra SUNAT BETA: token real vía `POST /oauth/token`, factura `ACEPTADO`, y revocación inmediata confirmada (token previamente válido devuelve 401 antes de su expiración natural).
+
+**Pendiente (roadmap, en orden razonable — no construir todo de una vez):**
+1. Módulo **Clientes** (`modules/Clientes/{Domain,Application,Infrastructure}`, nuevo módulo top-level — a diferencia de `Empresa`, que se queda dentro de `Facturacion` por estar acoplado a configuración tributaria específica). CRUD simple, autocompleta el receptor al emitir sin reemplazar el snapshot desnormalizado de `comprobantes.receptor_*`.
+2. **Panel `/app`** self-service por empresa: guard de autenticación propio, `EmpresaPanelProvider` (Filament) separado de `AdminPanelProvider`, roles Spatie nuevos (`empresa_admin`/`facturador`/`contador`/`empleado`) con `empresa_id` obligatorio (a diferencia de `super_admin`, que exige `empresa_id` nulo). Mismos `Resources`/casos de uso que `/admin`, pero con la consulta forzada por Policy a la empresa del usuario autenticado — nunca un filtro solo visual.
+3. Escritor de auditoría (la tabla `auditorias` ya tiene el esquema correcto — usuario/integración/empresa/acción/entidad/ip/request_id/datos previos-nuevos — pero ningún caso de uso escribe ahí todavía).
+4. Envelope de respuesta API: agregar campo `"success": true/false` (hoy es `{"data"/"error", "meta"}` sin ese campo) — cambio de contrato aceptable ahora porque todavía no hay integraciones reales en producción.
+5. Rate limiting diferenciado por tipo de endpoint (login, emisión de token, emisión de comprobante, consulta) — hoy es un único límite genérico de 60/min por IP.
+6. Catálogo de productos/servicios (opcional, después del primer cliente real, no bloquea nada de lo anterior).
+
+**Explícitamente descartado incluso en este alcance ampliado:** microservicios, Kubernetes, Kafka, múltiples repositorios, CQRS/Event Sourcing completo — ninguno de estos resuelve un problema real con la cantidad de clientes actual. Ver también §11.

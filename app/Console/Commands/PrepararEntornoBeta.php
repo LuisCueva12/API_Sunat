@@ -4,22 +4,24 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Models\ApiKey as ApiKeyEloquent;
+use App\Models\Empresa as EmpresaEloquent;
 use App\Services\Certificados\GeneradorCertificadoAutofirmado;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Modules\Facturacion\Application\CasosDeUso\CrearApiKey;
+use Laravel\Passport\Client as ClienteOAuth;
 use Modules\Facturacion\Application\CasosDeUso\CrearCertificadoDigital;
 use Modules\Facturacion\Application\CasosDeUso\CrearCredencialSunat;
 use Modules\Facturacion\Application\CasosDeUso\CrearEmpresa;
+use Modules\Facturacion\Application\CasosDeUso\CrearIntegracionApi;
 use Modules\Facturacion\Application\CasosDeUso\CrearSerie;
-use Modules\Facturacion\Application\DTO\CrearApiKeyInput;
 use Modules\Facturacion\Application\DTO\CrearCertificadoDigitalInput;
 use Modules\Facturacion\Application\DTO\CrearCredencialSunatInput;
 use Modules\Facturacion\Application\DTO\CrearEmpresaInput;
+use Modules\Facturacion\Application\DTO\CrearIntegracionApiInput;
 use Modules\Facturacion\Application\DTO\CrearSerieInput;
 use Modules\Facturacion\Domain\Comprobante\TipoComprobante;
+use Modules\Facturacion\Domain\Empresa\ScopeApi;
 use Modules\Facturacion\Domain\Puertos\RepositorioCertificado;
 use Modules\Facturacion\Domain\Puertos\RepositorioEmpresa;
 use Modules\Facturacion\Domain\Puertos\RepositorioSerie;
@@ -29,7 +31,7 @@ final class PrepararEntornoBeta extends Command
 {
     protected $signature = 'facturacion:preparar-beta
         {--ruc=20100066603 : RUC válido usado como emisor de pruebas}
-        {--nueva-api-key : Generar otra API Key aunque ya exista una para BETA}';
+        {--nueva-integracion : Generar otra integración OAuth aunque ya exista una para BETA}';
 
     protected $description = 'Configura una empresa local para probar el envío de facturas contra SUNAT BETA';
 
@@ -38,7 +40,7 @@ final class PrepararEntornoBeta extends Command
         private readonly CrearSerie $crearSerie,
         private readonly CrearCertificadoDigital $crearCertificado,
         private readonly CrearCredencialSunat $crearCredencial,
-        private readonly CrearApiKey $crearApiKey,
+        private readonly CrearIntegracionApi $crearIntegracion,
         private readonly RepositorioEmpresa $repositorioEmpresa,
         private readonly RepositorioSerie $repositorioSerie,
         private readonly RepositorioCertificado $repositorioCertificado,
@@ -125,20 +127,24 @@ final class PrepararEntornoBeta extends Command
             claveSol: 'moddatos',
         ));
 
-        $apiKeyExistente = ApiKeyEloquent::query()
-            ->where('empresa_id', $empresa->id())
-            ->where('nombre', 'Integración SUNAT BETA')
-            ->where('estado', 'ACTIVA')
+        $integracionExistente = ClienteOAuth::query()
+            ->where('owner_type', EmpresaEloquent::class)
+            ->where('owner_id', $empresa->id())
+            ->where('name', 'Integración SUNAT BETA')
+            ->where('revoked', false)
             ->exists();
 
-        $apiKey = null;
+        $clientId = null;
+        $clientSecret = null;
 
-        if (! $apiKeyExistente || $this->option('nueva-api-key')) {
-            $apiKey = $this->crearApiKey->ejecutar(new CrearApiKeyInput(
+        if (! $integracionExistente || $this->option('nueva-integracion')) {
+            $resultado = $this->crearIntegracion->ejecutar(new CrearIntegracionApiInput(
                 empresaId: $empresa->id(),
                 nombre: 'Integración SUNAT BETA',
-                scopes: ['comprobantes:crear', 'comprobantes:leer', 'comprobantes:reintentar'],
-            ))->claveCompleta;
+                scopes: ScopeApi::valores(),
+            ));
+            $clientId = $resultado->integracion->id();
+            $clientSecret = $resultado->clientSecret;
         }
 
         $this->components->info('Entorno SUNAT BETA preparado.');
@@ -147,7 +153,8 @@ final class PrepararEntornoBeta extends Command
             ['RUC', $ruc],
             ['Serie factura', 'F001'],
             ['Usuario BETA', $ruc.'MODDATOS'],
-            ['API Key nueva', $apiKey ?? 'Ya existía; usa --nueva-api-key si necesitas rotarla'],
+            ['client_id nuevo', $clientId ?? 'Ya existía; usa --nueva-integracion si necesitas rotarla'],
+            ['client_secret nuevo', $clientSecret ?? '—'],
         ]);
 
         return self::SUCCESS;

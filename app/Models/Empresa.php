@@ -8,7 +8,9 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Carbon;
+use Laravel\Passport\Client;
 
 /**
  * @property string $id
@@ -69,9 +71,9 @@ class Empresa extends Model
         return $this->hasMany(CredencialSunat::class);
     }
 
-    /** @return HasMany<ApiKey, $this> */
-    public function apiKeys(): HasMany
+    /** @return MorphMany<Client, $this> */
+    public function integraciones(): MorphMany
     {
-        return $this->hasMany(ApiKey::class);
+        return $this->morphMany(Client::class, 'owner');
     }
 }

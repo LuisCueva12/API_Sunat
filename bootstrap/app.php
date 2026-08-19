@@ -4,20 +4,22 @@ declare(strict_types=1);
 
 use App\Http\Api\RespuestaApi;
 use App\Http\Middleware\AsignarRequestId;
-use App\Http\Middleware\AutenticarApiKey;
 use App\Http\Middleware\Idempotencia;
-use App\Http\Middleware\VerificarScopeApiKey;
+use App\Http\Middleware\ResolverEmpresaIntegracion;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Laravel\Passport\Exceptions\AuthenticationException as PassportAuthenticationException;
+use Laravel\Passport\Exceptions\MissingScopeException;
 use Modules\Facturacion\Domain\Excepciones\ComprobanteInvalidoException;
 use Modules\Facturacion\Domain\Excepciones\ComprobanteNoEncontradoException;
 use Modules\Facturacion\Domain\Excepciones\ConfiguracionSunatInvalidaException;
 use Modules\Facturacion\Domain\Excepciones\SerieInvalidaException;
 use Modules\Facturacion\Domain\Excepciones\TransicionEstadoInvalidaException;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -34,8 +36,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->throttleApi();
 
         $middleware->alias([
-            'api.key' => AutenticarApiKey::class,
-            'api.scope' => VerificarScopeApiKey::class,
+            'integracion.api' => ResolverEmpresaIntegracion::class,
             'api.idempotencia' => Idempotencia::class,
         ]);
     })
@@ -54,6 +55,37 @@ return Application::configure(basePath: dirname(__DIR__))
                 'Los datos enviados contienen errores.',
                 422,
                 collect($e->errors())->map(fn ($mensajes, $campo) => ['campo' => $campo, 'mensajes' => $mensajes])->values()->all(),
+            );
+        });
+
+        $exceptions->render(function (PassportAuthenticationException $e, Request $request) {
+            if (! $request->is('api/*')) {
+                return null;
+            }
+
+            return RespuestaApi::error(
+                'NO_AUTORIZADO',
+                'Falta el header Authorization: Bearer <access_token> o el token es inválido/expiró.',
+                401,
+            );
+        });
+
+        $exceptions->render(function (AccessDeniedHttpException $e, Request $request) {
+            if (! $request->is('api/*')) {
+                return null;
+            }
+
+            // Laravel envuelve MissingScopeException (AuthorizationException) en
+            // AccessDeniedHttpException antes de que lleguen los render() propios
+            // (ver Handler::prepareException) — el original queda en getPrevious().
+            if (! $e->getPrevious() instanceof MissingScopeException) {
+                return null;
+            }
+
+            return RespuestaApi::error(
+                'PROHIBIDO',
+                'Esta integración no tiene el permiso requerido: '.implode(', ', $e->getPrevious()->scopes()).'.',
+                403,
             );
         });
 

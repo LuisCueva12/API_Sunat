@@ -3,20 +3,24 @@
 declare(strict_types=1);
 
 use App\Jobs\ProcesarComprobante;
-use App\Models\ApiKey as ApiKeyEloquent;
 use App\Models\Comprobante as ComprobanteEloquent;
 use App\Models\Empresa as EmpresaEloquent;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
-use Modules\Facturacion\Infrastructure\Seguridad\GeneradorClaveApiSegura;
+use Laravel\Passport\Client as ClienteOAuth;
+use Laravel\Passport\Passport;
 
 beforeEach(function () {
     Queue::fake();
 });
 
-function crearEmpresaConApiKey(
+/**
+ * @param  array<int, string>  $scopes
+ * @return array{0: EmpresaEloquent, 1: ClienteOAuth}
+ */
+function crearEmpresaConIntegracion(
     array $scopes = ['comprobantes:crear', 'comprobantes:leer'],
     string $ruc = '20100070970',
 ): array {
@@ -26,18 +30,21 @@ function crearEmpresaConApiKey(
         'estado' => 'ACTIVA',
     ]);
 
-    $resultado = (new GeneradorClaveApiSegura)->generar();
-
-    ApiKeyEloquent::create([
-        'empresa_id' => $empresa->id,
-        'nombre' => 'Key de prueba',
-        'prefijo' => $resultado->prefijo,
-        'hash' => $resultado->hash,
+    $cliente = ClienteOAuth::forceCreate([
+        'name' => 'Integración de prueba',
+        'secret' => Str::random(40),
+        'provider' => null,
+        'redirect_uris' => [],
+        'grant_types' => ['client_credentials'],
+        'revoked' => false,
+        'owner_type' => EmpresaEloquent::class,
+        'owner_id' => $empresa->id,
         'scopes' => $scopes,
-        'estado' => 'ACTIVA',
     ]);
 
-    return [$empresa, $resultado->claveCompleta];
+    Passport::actingAsClient($cliente, $scopes);
+
+    return [$empresa, $cliente];
 }
 
 function crearSerieFactura(string $empresaId, string $serie = 'F001'): void
@@ -68,11 +75,10 @@ function payloadFacturaValida(): array
 }
 
 it('emite una factura vía API con autenticación correcta', function () {
-    [$empresa, $apiKey] = crearEmpresaConApiKey();
+    [$empresa] = crearEmpresaConIntegracion();
     crearSerieFactura($empresa->id);
 
-    $respuesta = $this->withHeader('Authorization', "Bearer {$apiKey}")
-        ->postJson('/api/v1/facturas', payloadFacturaValida());
+    $respuesta = $this->postJson('/api/v1/facturas', payloadFacturaValida());
 
     $respuesta->assertStatus(202)
         ->assertJsonPath('data.tipo', 'factura')
@@ -85,15 +91,13 @@ it('emite una factura vía API con autenticación correcta', function () {
 });
 
 it('propaga el request id al procesamiento asíncrono', function () {
-    [$empresa, $apiKey] = crearEmpresaConApiKey();
+    [$empresa] = crearEmpresaConIntegracion();
     crearSerieFactura($empresa->id);
 
     $requestId = 'req-integracion-9841';
 
-    $this->withHeaders([
-        'Authorization' => "Bearer {$apiKey}",
-        'X-Request-Id' => $requestId,
-    ])->postJson('/api/v1/facturas', payloadFacturaValida())
+    $this->withHeaders(['X-Request-Id' => $requestId])
+        ->postJson('/api/v1/facturas', payloadFacturaValida())
         ->assertStatus(202)
         ->assertHeader('X-Request-Id', $requestId)
         ->assertJsonPath('meta.request_id', $requestId);
@@ -106,15 +110,14 @@ it('propaga el request id al procesamiento asíncrono', function () {
 });
 
 it('programa el reintento de un comprobante en error', function () {
-    [$empresa, $apiKey] = crearEmpresaConApiKey(scopes: [
+    [$empresa] = crearEmpresaConIntegracion(scopes: [
         'comprobantes:crear',
         'comprobantes:leer',
         'comprobantes:reintentar',
     ]);
     crearSerieFactura($empresa->id);
 
-    $this->withHeader('Authorization', "Bearer {$apiKey}")
-        ->postJson('/api/v1/facturas', payloadFacturaValida())
+    $this->postJson('/api/v1/facturas', payloadFacturaValida())
         ->assertStatus(202);
 
     $comprobante = ComprobanteEloquent::query()->firstOrFail();
@@ -125,10 +128,8 @@ it('programa el reintento de un comprobante en error', function () {
 
     $requestId = 'req-reintento-9841';
 
-    $this->withHeaders([
-        'Authorization' => "Bearer {$apiKey}",
-        'X-Request-Id' => $requestId,
-    ])->postJson("/api/v1/comprobantes/{$comprobante->id}/reintentar")
+    $this->withHeaders(['X-Request-Id' => $requestId])
+        ->postJson("/api/v1/comprobantes/{$comprobante->id}/reintentar")
         ->assertStatus(202)
         ->assertJsonPath('data.id', $comprobante->id)
         ->assertJsonPath('data.estado', 'ERROR')
@@ -142,21 +143,19 @@ it('programa el reintento de un comprobante en error', function () {
 });
 
 it('rechaza reintentar un comprobante que no está en error', function () {
-    [$empresa, $apiKey] = crearEmpresaConApiKey(scopes: [
+    [$empresa] = crearEmpresaConIntegracion(scopes: [
         'comprobantes:crear',
         'comprobantes:reintentar',
     ]);
     crearSerieFactura($empresa->id);
 
-    $this->withHeader('Authorization', "Bearer {$apiKey}")
-        ->postJson('/api/v1/facturas', payloadFacturaValida())
+    $this->postJson('/api/v1/facturas', payloadFacturaValida())
         ->assertStatus(202);
 
     $comprobante = ComprobanteEloquent::query()->firstOrFail();
     Queue::fake();
 
-    $this->withHeader('Authorization', "Bearer {$apiKey}")
-        ->postJson("/api/v1/comprobantes/{$comprobante->id}/reintentar")
+    $this->postJson("/api/v1/comprobantes/{$comprobante->id}/reintentar")
         ->assertStatus(409)
         ->assertJsonPath('error.codigo', 'TRANSICION_INVALIDA');
 
@@ -169,17 +168,16 @@ it('rechaza sin header de autorización', function () {
         ->assertJsonPath('error.codigo', 'NO_AUTORIZADO');
 });
 
-it('rechaza con una api key inválida', function () {
-    $this->withHeader('Authorization', 'Bearer fe_live_no-existe')
+it('rechaza con un access_token inválido', function () {
+    $this->withHeader('Authorization', 'Bearer token-que-no-existe')
         ->postJson('/api/v1/facturas', payloadFacturaValida())
         ->assertStatus(401);
 });
 
 it('rechaza datos incompletos con 422 y nunca expone detalles internos', function () {
-    [, $apiKey] = crearEmpresaConApiKey();
+    crearEmpresaConIntegracion();
 
-    $respuesta = $this->withHeader('Authorization', "Bearer {$apiKey}")
-        ->postJson('/api/v1/facturas', ['serie' => 'F001']);
+    $respuesta = $this->postJson('/api/v1/facturas', ['serie' => 'F001']);
 
     $respuesta->assertStatus(422)
         ->assertJsonPath('error.codigo', 'DATOS_INVALIDOS')
@@ -187,21 +185,20 @@ it('rechaza datos incompletos con 422 y nunca expone detalles internos', functio
         ->assertJsonMissingPath('exception');
 });
 
-it('rechaza si la api key no tiene el scope requerido', function () {
-    [$empresa, $apiKey] = crearEmpresaConApiKey(scopes: ['comprobantes:leer']);
+it('rechaza si la integración no tiene el scope requerido', function () {
+    [$empresa] = crearEmpresaConIntegracion(scopes: ['comprobantes:leer']);
     crearSerieFactura($empresa->id);
 
-    $this->withHeader('Authorization', "Bearer {$apiKey}")
-        ->postJson('/api/v1/facturas', payloadFacturaValida())
+    $this->postJson('/api/v1/facturas', payloadFacturaValida())
         ->assertStatus(403)
         ->assertJsonPath('error.codigo', 'PROHIBIDO');
 });
 
 it('es idempotente: la misma Idempotency-Key nunca duplica el comprobante', function () {
-    [$empresa, $apiKey] = crearEmpresaConApiKey();
+    [$empresa] = crearEmpresaConIntegracion();
     crearSerieFactura($empresa->id);
 
-    $headers = ['Authorization' => "Bearer {$apiKey}", 'Idempotency-Key' => 'venta-9841'];
+    $headers = ['Idempotency-Key' => 'venta-9841'];
 
     $primera = $this->withHeaders($headers)->postJson('/api/v1/facturas', payloadFacturaValida());
     $segunda = $this->withHeaders($headers)->postJson('/api/v1/facturas', payloadFacturaValida());
@@ -213,10 +210,10 @@ it('es idempotente: la misma Idempotency-Key nunca duplica el comprobante', func
 });
 
 it('rechaza reusar una Idempotency-Key con una solicitud distinta', function () {
-    [$empresa, $apiKey] = crearEmpresaConApiKey();
+    [$empresa] = crearEmpresaConIntegracion();
     crearSerieFactura($empresa->id);
 
-    $headers = ['Authorization' => "Bearer {$apiKey}", 'Idempotency-Key' => 'venta-distinta'];
+    $headers = ['Idempotency-Key' => 'venta-distinta'];
 
     $this->withHeaders($headers)->postJson('/api/v1/facturas', payloadFacturaValida())->assertStatus(202);
 
@@ -229,15 +226,13 @@ it('rechaza reusar una Idempotency-Key con una solicitud distinta', function () 
 });
 
 it('nunca permite que una empresa consulte el comprobante de otra', function () {
-    [$empresaA, $apiKeyA] = crearEmpresaConApiKey();
+    [$empresaA] = crearEmpresaConIntegracion();
     crearSerieFactura($empresaA->id);
-    $this->withHeader('Authorization', "Bearer {$apiKeyA}")
-        ->postJson('/api/v1/facturas', payloadFacturaValida());
+    $this->postJson('/api/v1/facturas', payloadFacturaValida());
     $comprobanteDeA = ComprobanteEloquent::query()->first();
 
-    [, $apiKeyB] = crearEmpresaConApiKey(ruc: '20100070971');
+    crearEmpresaConIntegracion(ruc: '20100070971');
 
-    $this->withHeader('Authorization', "Bearer {$apiKeyB}")
-        ->getJson("/api/v1/comprobantes/{$comprobanteDeA->id}")
+    $this->getJson("/api/v1/comprobantes/{$comprobanteDeA->id}")
         ->assertStatus(404);
 });

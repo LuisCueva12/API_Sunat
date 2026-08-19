@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Facturacion\Application\DTO;
 
-use DateTimeImmutable;
-
-final class CrearApiKeyInput
+final class CrearIntegracionApiInput
 {
     /**
      * @param  array<int, string>  $scopes
@@ -15,6 +13,5 @@ final class CrearApiKeyInput
         public readonly string $empresaId,
         public readonly string $nombre,
         public readonly array $scopes,
-        public readonly ?DateTimeImmutable $expiraEn = null,
     ) {}
 }

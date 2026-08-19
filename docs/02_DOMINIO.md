@@ -113,17 +113,20 @@ CertificadoEmpresa       empresa + PEM normalizado + huella SHA-256 + vigencia +
 CredencialSunatEmpresa   empresa + entorno (BETA/PRODUCCION) + usuario/clave SOL +
                          activa. Única por (empresa, entorno); registrar sobre un
                          entorno ya configurado rota la credencial en vez de duplicar.
-ApiKeyEmpresa            empresa + nombre + prefijo + hash + scopes + expiración +
-                         estado (ACTIVA/REVOCADA). Los scopes válidos están cerrados
-                         en el propio agregado (`ApiKeyEmpresa::ESCOPOS_VALIDOS`).
+IntegracionApi           empresa + nombre + scopes + estado (ACTIVA/REVOCADA). Los
+                         scopes válidos están en `ScopeApi` (enum, catálogo propio —
+                         no confundir con catálogos SUNAT). El `id` de la entidad ES
+                         el `oauth_client_id` de Passport (no hay tabla propia
+                         `integraciones_api`; se apoya en `oauth_clients.owner_type`/
+                         `owner_id` nativos de Passport apuntando a `Empresa`).
 ```
 
-Casos de uso: `CrearEmpresa`, `CrearSerie`, `CrearCertificadoDigital`, `CrearCredencialSunat`, `CrearApiKey` (`Application/CasosDeUso`). Todos validan que la empresa exista y esté activa antes de operar (mismo patrón, reutilizando `RepositorioEmpresa`).
+Casos de uso: `CrearEmpresa`, `CrearSerie`, `CrearCertificadoDigital`, `CrearCredencialSunat`, `CrearIntegracionApi`, `RevocarIntegracionApi` (`Application/CasosDeUso`). Todos validan que la empresa exista y esté activa antes de operar (mismo patrón, reutilizando `RepositorioEmpresa`).
 
 **`AnalizadorCertificadoDigital`** (`Domain/Certificados`) es un servicio de dominio concreto (sin puerto, igual que `CalculadorTributos`) que acepta PEM o PKCS#12 vía `ext-openssl` — extensión núcleo de PHP, no Illuminate ni Greenter, por lo que vivir en Domain no rompe la regla de dependencia cero. Comprueba la contraseña del P12/PFX, exige una clave privada correspondiente, normaliza certificado+clave a PEM, calcula la huella SHA-256 y la vigencia; `CrearCertificadoDigital` rechaza registrar un certificado ya vencido. El PEM se cifra en BD y la contraseña de importación se descarta.
 
 **Verificación de titularidad pendiente**: `AnalizadorCertificadoDigital` valida que el certificado sea un X.509 bien formado y no esté vencido, pero **no** verifica que el RUC del titular del certificado coincida con el RUC de la empresa que lo registra — SUNAT exige que el certificado corresponda al RUC emisor, pero el formato exacto en que ese RUC aparece dentro del certificado (qué campo del Subject, qué OID) no está confirmado con una fuente oficial todavía. No se implementa un chequeo adivinado: se documenta aquí como riesgo abierto (ver [05_SUNAT.md](05_SUNAT.md)) en vez de dar una falsa sensación de validación completa.
 
-**`GeneradorClaveApi`** (puerto) + `GeneradorClaveApiSegura` (Infrastructure) generan la API Key (32 caracteres aleatorios vía `random_bytes`, prefijo `fe_live_`) y su hash SHA-256. `CrearApiKey` devuelve `ResultadoCrearApiKey { apiKey, claveCompleta }` — `claveCompleta` es la única vez que el valor en texto plano existe fuera de la memoria transitoria del proceso; nunca se persiste (ver [06_SEGURIDAD.md](06_SEGURIDAD.md)).
+**`GestorClientesOAuth`** (puerto) + `GestorClientesOAuthPassport` (Infrastructure) envuelven `Laravel\Passport\ClientRepository`/`Passport::client()` para crear el `oauth_client` (grant `client_credentials`, `secret` hasheado automáticamente por Passport) y revocarlo. `CrearIntegracionApi` devuelve `ResultadoCrearIntegracionApi { integracion, clientSecret }` — `clientSecret` es la única vez que el valor en texto plano existe fuera de la memoria transitoria del proceso; Passport lo hashea antes de persistirlo (ver [06_SEGURIDAD.md](06_SEGURIDAD.md)). `RevocarIntegracionApi` revoca el cliente **y** todos sus `access_token` ya emitidos — revocar solo el cliente no invalida tokens todavía vigentes (Passport valida revocación a nivel de token, no de cliente).
 
-**Sin endpoints HTTP todavía**: estas altas son intencionalmente solo Domain+Application+Infrastructure por ahora. Exponerlas en la API pública V1 (autenticada con la propia API Key del tenant) no tiene sentido para "crear la primera empresa/API Key" — es un problema de huevo y gallina. La forma correcta es un área administrativa autenticada aparte (Fase 8, panel — ver [01_ARQUITECTURA.md](01_ARQUITECTURA.md) §10), todavía no construida. Hasta entonces, estos casos de uso se invocan desde comandos de consola/tinker o tests, nunca desde una ruta pública sin autenticación.
+**Sin endpoints HTTP todavía**: estas altas son intencionalmente solo Domain+Application+Infrastructure por ahora. Exponerlas en la API pública V1 (autenticada con la propia integración del tenant) no tiene sentido para "crear la primera empresa/integración" — es un problema de huevo y gallina. La forma correcta es un área administrativa autenticada aparte (Fase 8, panel — ver [01_ARQUITECTURA.md](01_ARQUITECTURA.md) §10), todavía no construida. Hasta entonces, estos casos de uso se invocan desde comandos de consola/tinker o tests, nunca desde una ruta pública sin autenticación.

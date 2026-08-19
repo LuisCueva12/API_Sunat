@@ -16,7 +16,7 @@ Después de migrar la base de datos:
 php artisan facturacion:preparar-beta
 ```
 
-El comando crea o reutiliza la empresa de pruebas con RUC `20100066603`, la serie `F001`, un certificado autofirmado cifrado, las credenciales BETA y una API Key. Está bloqueado cuando `APP_ENV=production`. Puede indicarse otro RUC válido con `--ruc=`.
+El comando crea o reutiliza la empresa de pruebas con RUC `20100066603`, la serie `F001`, un certificado autofirmado cifrado, las credenciales BETA y una integración OAuth2 (`client_id`/`client_secret`). Está bloqueado cuando `APP_ENV=production`. Puede indicarse otro RUC válido con `--ruc=`.
 
 Con el servidor HTTP y el worker activos, una factura mínima puede enviarse así:
 
@@ -24,7 +24,7 @@ Con el servidor HTTP y el worker activos, una factura mínima puede enviarse as�
 php artisan queue:work --tries=5
 
 curl -X POST http://localhost:8000/api/v1/facturas \
-  -H "Authorization: Bearer $API_KEY" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: beta-factura-001" \
   -d '{
@@ -42,7 +42,7 @@ curl -X POST http://localhost:8000/api/v1/facturas \
   }'
 ```
 
-`$API_KEY` es el valor mostrado una sola vez por `facturacion:preparar-beta`. El endpoint responde `202`; el resultado tributario se consulta en `GET /api/v1/comprobantes/{id}/estado`. BETA solo valida pruebas y nunca debe mezclarse con credenciales o documentos de producción.
+`$ACCESS_TOKEN` se obtiene con `POST /oauth/token` (`grant_type=client_credentials`) usando el `client_id`/`client_secret` que muestra una sola vez `facturacion:preparar-beta`. El endpoint responde `202`; el resultado tributario se consulta en `GET /api/v1/comprobantes/{id}/estado`. BETA solo valida pruebas y nunca debe mezclarse con credenciales o documentos de producción.
 
 Fuente: [Manual del programador SEE - Sistemas del Contribuyente](https://cpe.sunat.gob.pe/sites/default/files/inline-files/manual_programador%20%281%29.pdf), sección Servicio Beta.
 

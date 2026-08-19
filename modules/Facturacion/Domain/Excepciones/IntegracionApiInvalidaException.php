@@ -6,4 +6,4 @@ namespace Modules\Facturacion\Domain\Excepciones;
 
 use DomainException;
 
-final class ApiKeyInvalidaException extends DomainException {}
+final class IntegracionApiInvalidaException extends DomainException {}
