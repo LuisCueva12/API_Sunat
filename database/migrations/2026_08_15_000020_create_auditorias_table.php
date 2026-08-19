@@ -14,7 +14,7 @@ return new class extends Migration
             $table->id();
             $table->foreignUuid('empresa_id')->nullable()->constrained('empresas');
             $table->foreignUuid('usuario_id')->nullable()->constrained('usuarios');
-            $table->foreignUuid('api_key_id')->nullable()->constrained('api_keys');
+            $table->foreignUuid('oauth_client_id')->nullable()->constrained('oauth_clients');
             $table->string('accion');
             $table->string('entidad_tipo')->nullable();
             $table->string('entidad_id')->nullable();

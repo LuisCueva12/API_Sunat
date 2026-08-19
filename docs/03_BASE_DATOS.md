@@ -89,12 +89,12 @@ ALTER TABLE series ADD CONSTRAINT series_unicas
 
 ### oauth_clients (Laravel Passport + columnas propias)
 
-No hay tabla `integraciones_api` separada — la integración de una empresa con la API **es** un `oauth_client` de Passport. Migraciones estándar del paquete (`oauth_clients`, `oauth_access_tokens`, `oauth_refresh_tokens`, `oauth_auth_codes`, `oauth_device_codes`) más una migración propia que extiende `oauth_clients`:
+No hay tabla `integraciones_api` separada — la integración de una empresa con la API **es** un `oauth_client` de Passport. Migraciones publicadas del paquete (`oauth_clients`, `oauth_access_tokens`, `oauth_refresh_tokens`, `oauth_auth_codes`, `oauth_device_codes`, corridas antes de `comprobantes`/`auditorias` porque ambas tienen FK a `oauth_clients`), con `oauth_clients` editada directamente para agregar las columnas propias — no como parche posterior, ya nace así:
 
 | Campo | Tipo | Notas |
 |---|---|---|
 | id | uuid | PK, generado por Passport — es el `client_id` |
-| owner_type, owner_id | varchar, uuid | nativos de Passport (`nullableMorphs('owner')`); `owner_id` se retipó de `bigint` a `uuid` en migración propia porque todo este proyecto usa UUID como PK. Apunta a `App\Models\Empresa` |
+| owner_type, owner_id | varchar, uuid | nativos de Passport (`nullableUuidMorphs('owner')` — no el `nullableMorphs()` que trae Passport por defecto, que crea `owner_id` como `bigint`). Apunta a `App\Models\Empresa` |
 | name | varchar | nombre visible de la integración |
 | secret | varchar | hasheado por Passport (`Client::secret()` accessor) — nunca en texto plano |
 | grant_types | jsonb | siempre `["client_credentials"]` — único grant habilitado |

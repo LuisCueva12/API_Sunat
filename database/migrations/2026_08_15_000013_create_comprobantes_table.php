@@ -54,7 +54,7 @@ return new class extends Migration
             $table->unsignedSmallInteger('intentos_envio')->default(0);
             $table->text('ultimo_error')->nullable();
 
-            $table->foreignUuid('api_key_id')->nullable()->constrained('api_keys');
+            $table->foreignUuid('oauth_client_id')->nullable()->constrained('oauth_clients');
             $table->foreignUuid('creado_por')->nullable()->constrained('usuarios');
 
             $table->timestampsTz();

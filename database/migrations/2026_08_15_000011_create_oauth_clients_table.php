@@ -15,14 +15,23 @@ return new class extends Migration
     {
         Schema::create('oauth_clients', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->nullableMorphs('owner');
+            // uuid, no bigint (nullableMorphs por defecto) — todo este
+            // proyecto usa UUID como PK, owner apunta a Empresa.
+            $table->nullableUuidMorphs('owner');
             $table->string('name');
             $table->string('secret')->nullable();
             $table->string('provider')->nullable();
             $table->text('redirect_uris');
             $table->text('grant_types');
+            // Columna propia (no estándar de Passport): restringe los scopes
+            // que puede solicitar esta integración. Sin ella, Client::hasScope()
+            // permite cualquier scope registrado en Passport::tokensCan().
+            $table->jsonb('scopes')->nullable();
             $table->boolean('revoked');
             $table->timestamps();
+            // Columna propia: Passport no trackea uso, se actualiza en cada
+            // request autenticado (ResolverEmpresaIntegracion middleware).
+            $table->timestampTz('ultimo_uso_at')->nullable();
         });
     }
 
