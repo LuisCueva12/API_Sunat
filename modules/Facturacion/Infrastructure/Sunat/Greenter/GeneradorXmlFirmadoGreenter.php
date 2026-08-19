@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Modules\Facturacion\Infrastructure\Sunat\Greenter;
 
 use DOMDocument;
+use Greenter\Model\Sale\Invoice;
 use Greenter\Xml\Builder\InvoiceBuilder;
+use Greenter\Xml\Builder\NoteBuilder;
 use Greenter\XMLSecLibs\Sunat\SignedXml;
 use LogicException;
 use Modules\Facturacion\Domain\Comprobante\Comprobante;
@@ -21,24 +23,37 @@ final class GeneradorXmlFirmadoGreenter implements GeneradorXmlFirmado
 
     public function __construct(
         private readonly MapeadorFacturaBoletaGreenter $mapeadorFacturaBoleta,
+        private readonly MapeadorNotaGreenter $mapeadorNota,
     ) {}
 
-    public function generar(Comprobante $comprobante, DatosEmisor $emisor, CertificadoDigital $certificado): string
-    {
-        $documento = match ($comprobante->tipo()) {
-            TipoComprobante::Factura, TipoComprobante::Boleta => $this->mapeadorFacturaBoleta->mapear($comprobante, $emisor),
-            default => throw new LogicException(
-                "Tipo de comprobante '{$comprobante->tipo()->value}' aún no soportado por GeneradorXmlFirmadoGreenter."
-            ),
+    public function generar(
+        Comprobante $comprobante,
+        DatosEmisor $emisor,
+        CertificadoDigital $certificado,
+        ?Comprobante $comprobanteReferenciado = null,
+    ): string {
+        [$documento, $builder] = match ($comprobante->tipo()) {
+            TipoComprobante::Factura, TipoComprobante::Boleta => [
+                $this->mapeadorFacturaBoleta->mapear($comprobante, $emisor),
+                new InvoiceBuilder,
+            ],
+            TipoComprobante::NotaCredito, TipoComprobante::NotaDebito => [
+                $this->mapeadorNota->mapear($comprobante, $emisor, $comprobanteReferenciado ?? throw new LogicException(
+                    "El comprobante {$comprobante->id()} requiere el comprobante referenciado para generar su XML."
+                )),
+                new NoteBuilder,
+            ],
         };
 
-        $xml = (new InvoiceBuilder)->build($documento);
+        $xml = $builder->build($documento);
 
         if ($xml === '') {
             throw new RuntimeException("Greenter no pudo generar el XML del comprobante {$comprobante->id()}.");
         }
 
-        $xml = $this->agregarTipoOperacion($xml, $documento->getTipoOperacion() ?? '');
+        if ($documento instanceof Invoice) {
+            $xml = $this->agregarTipoOperacion($xml, $documento->getTipoOperacion() ?? '');
+        }
 
         $firmador = new SignedXml;
         $firmador->setCertificate($certificado->contenidoPem);

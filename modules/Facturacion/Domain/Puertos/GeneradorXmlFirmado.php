@@ -14,5 +14,6 @@ interface GeneradorXmlFirmado
         Comprobante $comprobante,
         DatosEmisor $emisor,
         CertificadoDigital $certificado,
+        ?Comprobante $comprobanteReferenciado = null,
     ): string;
 }

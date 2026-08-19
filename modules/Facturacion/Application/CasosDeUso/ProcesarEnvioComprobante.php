@@ -40,7 +40,13 @@ final class ProcesarEnvioComprobante
 
         try {
             $datosSunat = $this->proveedorDatosSunat->paraEmpresa($empresaId, $entorno);
-            $xmlFirmado = $this->generadorXmlFirmado->generar($comprobante, $datosSunat->emisor, $datosSunat->certificado);
+            $comprobanteReferenciado = $this->resolverComprobanteReferenciado($comprobante);
+            $xmlFirmado = $this->generadorXmlFirmado->generar(
+                $comprobante,
+                $datosSunat->emisor,
+                $datosSunat->certificado,
+                $comprobanteReferenciado,
+            );
         } catch (Throwable $e) {
             $comprobante->marcarError($e->getMessage());
             $this->repositorio->actualizarEstado($comprobante);
@@ -100,6 +106,25 @@ final class ProcesarEnvioComprobante
         }
 
         return false;
+    }
+
+    private function resolverComprobanteReferenciado(Comprobante $comprobante): ?Comprobante
+    {
+        $referencia = $comprobante->referencia();
+
+        if ($referencia === null) {
+            return null;
+        }
+
+        $original = $this->repositorio->buscarPorId($comprobante->empresaId(), $referencia->comprobanteId());
+
+        if ($original === null) {
+            throw new ComprobanteInvalidoException(
+                "El comprobante de referencia {$referencia->comprobanteId()} ya no existe para la empresa {$comprobante->empresaId()}.",
+            );
+        }
+
+        return $original;
     }
 
     private function rutaBase(Comprobante $comprobante): string

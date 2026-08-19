@@ -65,6 +65,10 @@ Los errores BETA `3030`, `3205` y `3244` permitieron completar esos campos. En p
 
 El 19 de agosto de 2026 se emitió una boleta (`B001-1`, receptor con DNI) con el mismo flujo API → cola → SUNAT BETA y quedó `ACEPTADO`, con XML y CDR reales. Confirma que `MapeadorFacturaBoletaGreenter` (`Invoice` de Greenter con `tipoDoc=03`, catálogo 1 SUNAT) no necesita nada adicional a lo que ya exige Factura — comparten `InvoiceBuilder`, forma de pago y domicilio fiscal. Antes de este mapeo, cualquier intento de emitir una Boleta fallaba antes de llegar a SUNAT (ver `docs/00_ESTADO_PROYECTO.md`, registro del mismo día).
 
+### Resultado BETA verificado — Nota de Crédito y Nota de Débito
+
+El 19 de agosto de 2026 se emitieron una Nota de Crédito (`FC01-1`, motivo `06` Devolución total) y una Nota de Débito (`FD01-1`, motivo `02` Aumento en el valor), ambas referenciando la misma factura ya aceptada (`F001-3`). Las dos quedaron `ACEPTADO` con XML y CDR reales. A diferencia de Factura/Boleta, el `Note` de Greenter (`NoteBuilder`, plantillas `notacr2.1.xml.twig`/`notadb2.1.xml.twig`) **no** requiere el `cbc:ProfileID` (tipo de operación) que sí se le inyecta manualmente al `Invoice` — se confirmó revisando las plantillas oficiales de Greenter, que no lo contemplan para notas. `MapeadorNotaGreenter` no lo agrega para este tipo de documento.
+
 ### Certificado de producción
 
 El alta acepta PEM o el archivo P12/PFX entregado por SUNAT o por una entidad acreditada. Verifica la contraseña, la vigencia y que la clave privada corresponda al certificado; luego normaliza el contenido a PEM y lo cifra en la base de datos. La contraseña de importación no se conserva.

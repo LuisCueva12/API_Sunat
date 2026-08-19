@@ -3,8 +3,10 @@
 declare(strict_types=1);
 
 use Greenter\Model\Sale\Invoice;
+use Greenter\Model\Sale\Note;
 use Modules\Facturacion\Domain\Comprobante\Comprobante;
 use Modules\Facturacion\Domain\Comprobante\ItemComprobante;
+use Modules\Facturacion\Domain\Comprobante\ReferenciaComprobante;
 use Modules\Facturacion\Domain\Comprobante\TipoComprobante;
 use Modules\Facturacion\Domain\Comprobante\TotalesComprobante;
 use Modules\Facturacion\Domain\Empresa\DatosEmisor;
@@ -18,6 +20,7 @@ use Modules\Facturacion\Domain\ValueObjects\Serie;
 use Modules\Facturacion\Domain\ValueObjects\TipoDocumentoIdentidad;
 use Modules\Facturacion\Infrastructure\Sunat\Greenter\GeneradorXmlFirmadoGreenter;
 use Modules\Facturacion\Infrastructure\Sunat\Greenter\MapeadorFacturaBoletaGreenter;
+use Modules\Facturacion\Infrastructure\Sunat\Greenter\MapeadorNotaGreenter;
 
 function certificadoDePruebaAutofirmado(): CertificadoDigital
 {
@@ -110,6 +113,46 @@ function comprobanteBoletaCompleto(): Comprobante
     return $comprobante;
 }
 
+function comprobanteNotaCreditoCompleto(Comprobante $original): Comprobante
+{
+    $comprobante = Comprobante::registrar(
+        id: '01991111-2222-7333-8444-555566669999',
+        empresaId: 'empresa-test',
+        tipo: TipoComprobante::NotaCredito,
+        numero: new NumeroComprobante(new Serie('FC01'), 1),
+        moneda: Moneda::PEN,
+        receptorDocumento: new DocumentoIdentidad(TipoDocumentoIdentidad::Ruc, (string) new Ruc('20100070970')),
+        receptorRazonSocial: 'Cliente de Prueba SAC',
+        fechaEmision: new DateTimeImmutable('2026-08-15'),
+        referencia: new ReferenciaComprobante($original->id(), '06', 'Devolución total'),
+    );
+
+    $comprobante->agregarItem(new ItemComprobante(
+        numeroOrden: 1,
+        descripcion: 'Devolución de servicio de consultoría',
+        unidadMedida: 'NIU',
+        cantidad: 2.0,
+        valorUnitario: Dinero::desde('100.00'),
+        precioUnitario: Dinero::desde('118.00'),
+        tipoAfectacionIgv: '10',
+        montoIgv: Dinero::desde('36.00'),
+        montoValorVenta: Dinero::desde('200.00'),
+        descuento: Dinero::cero(),
+    ));
+
+    $comprobante->definirTotales(new TotalesComprobante(
+        opGravada: Dinero::desde('200.00'),
+        opExonerada: Dinero::cero(),
+        opInafecta: Dinero::cero(),
+        opGratuita: Dinero::cero(),
+        totalIgv: Dinero::desde('36.00'),
+        totalDescuentos: Dinero::cero(),
+        total: Dinero::desde('236.00'),
+    ));
+
+    return $comprobante;
+}
+
 it('mapea una factura del dominio a un Invoice de Greenter sin errores', function () {
     $mapeador = new MapeadorFacturaBoletaGreenter;
     $emisor = new DatosEmisor(
@@ -139,7 +182,7 @@ it('mapea una factura del dominio a un Invoice de Greenter sin errores', functio
 
 it('genera un XML firmado bien formado a partir de una factura', function () {
     $mapeador = new MapeadorFacturaBoletaGreenter;
-    $generador = new GeneradorXmlFirmadoGreenter($mapeador);
+    $generador = new GeneradorXmlFirmadoGreenter($mapeador, new MapeadorNotaGreenter);
 
     $emisor = new DatosEmisor(
         ruc: new Ruc('20100070970'),
@@ -199,7 +242,7 @@ it('mapea una boleta del dominio a un Invoice de Greenter con tipoDoc 03', funct
 
 it('genera un XML firmado bien formado a partir de una boleta', function () {
     $mapeador = new MapeadorFacturaBoletaGreenter;
-    $generador = new GeneradorXmlFirmadoGreenter($mapeador);
+    $generador = new GeneradorXmlFirmadoGreenter($mapeador, new MapeadorNotaGreenter);
 
     $emisor = new DatosEmisor(
         ruc: new Ruc('20100070970'),
@@ -226,3 +269,87 @@ it('genera un XML firmado bien formado a partir de una boleta', function () {
         )->item(0)?->nodeValue)->toBe('03')
         ->and($xml)->toContain('<ds:Signature');
 });
+
+it('mapea una nota de crédito del dominio a un Note de Greenter con la referencia correcta', function () {
+    $mapeador = new MapeadorNotaGreenter;
+    $emisor = new DatosEmisor(
+        ruc: new Ruc('20100070970'),
+        razonSocial: 'Empresa de Prueba SAC',
+        nombreComercial: null,
+        direccion: 'Av. Prueba 123',
+        ubigeo: '150101',
+        departamento: 'LIMA',
+        provincia: 'LIMA',
+        distrito: 'LIMA',
+    );
+
+    $factura = comprobanteFacturaCompleto();
+    $notaCredito = comprobanteNotaCreditoCompleto($factura);
+
+    $note = $mapeador->mapear($notaCredito, $emisor, $factura);
+
+    expect($note->getTipoDoc())->toBe('07')
+        ->and($note->getSerie())->toBe('FC01')
+        ->and($note->getCodMotivo())->toBe('06')
+        ->and($note->getDesMotivo())->toBe('Devolución total')
+        ->and($note->getTipDocAfectado())->toBe('01')
+        ->and($note->getNumDocfectado())->toBe('F001-1')
+        ->and($note->getMtoImpVenta())->toBe(236.0);
+})->skip(fn () => ! class_exists(Note::class), 'Requiere greenter/greenter instalado.');
+
+it('genera un XML firmado bien formado a partir de una nota de crédito', function () {
+    $mapeador = new MapeadorFacturaBoletaGreenter;
+    $generador = new GeneradorXmlFirmadoGreenter($mapeador, new MapeadorNotaGreenter);
+
+    $emisor = new DatosEmisor(
+        ruc: new Ruc('20100070970'),
+        razonSocial: 'Empresa de Prueba SAC',
+        nombreComercial: null,
+        direccion: 'Av. Prueba 123',
+        ubigeo: '150101',
+        departamento: 'LIMA',
+        provincia: 'LIMA',
+        distrito: 'LIMA',
+    );
+
+    $factura = comprobanteFacturaCompleto();
+    $notaCredito = comprobanteNotaCreditoCompleto($factura);
+
+    $xml = $generador->generar($notaCredito, $emisor, certificadoDePruebaAutofirmado(), $factura);
+
+    expect($xml)->toBeString()->not->toBeEmpty();
+
+    $documento = new DOMDocument;
+    $cargado = $documento->loadXML($xml);
+
+    expect($cargado)->toBeTrue('El XML generado debe ser XML bien formado')
+        ->and($documento->getElementsByTagNameNS(
+            'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2',
+            'ResponseCode',
+        )->item(0)?->nodeValue)->toBe('06')
+        ->and($documento->getElementsByTagNameNS(
+            'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2',
+            'DocumentTypeCode',
+        )->item(0)?->nodeValue)->toBe('01')
+        ->and($xml)->toContain('<ds:Signature');
+});
+
+it('falla con un mensaje claro si se genera una nota sin el comprobante referenciado', function () {
+    $mapeador = new MapeadorFacturaBoletaGreenter;
+    $generador = new GeneradorXmlFirmadoGreenter($mapeador, new MapeadorNotaGreenter);
+
+    $emisor = new DatosEmisor(
+        ruc: new Ruc('20100070970'),
+        razonSocial: 'Empresa de Prueba SAC',
+        nombreComercial: null,
+        direccion: 'Av. Prueba 123',
+        ubigeo: '150101',
+        departamento: 'LIMA',
+        provincia: 'LIMA',
+        distrito: 'LIMA',
+    );
+
+    $notaCredito = comprobanteNotaCreditoCompleto(comprobanteFacturaCompleto());
+
+    $generador->generar($notaCredito, $emisor, certificadoDePruebaAutofirmado());
+})->throws(LogicException::class, 'requiere el comprobante referenciado');
