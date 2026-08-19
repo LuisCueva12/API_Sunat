@@ -11,15 +11,20 @@ use Greenter\Model\Sale\FormaPagos\FormaPagoContado;
 use Greenter\Model\Sale\Invoice;
 use Greenter\Model\Sale\Legend;
 use Greenter\Model\Sale\SaleDetail;
+use LogicException;
 use Luecano\NumeroALetras\NumeroALetras;
 use Modules\Facturacion\Domain\Comprobante\Comprobante;
 use Modules\Facturacion\Domain\Comprobante\ItemComprobante;
+use Modules\Facturacion\Domain\Comprobante\TipoComprobante;
 use Modules\Facturacion\Domain\Empresa\DatosEmisor;
 use Modules\Facturacion\Domain\ValueObjects\Dinero;
 
-final class MapeadorFacturaGreenter
+final class MapeadorFacturaBoletaGreenter
 {
-    private const TIPO_DOC_FACTURA = '01';
+    private const TIPOS_DOC = [
+        TipoComprobante::Factura->value => '01',
+        TipoComprobante::Boleta->value => '03',
+    ];
 
     private const TIPO_OPERACION_VENTA_INTERNA = '0101';
 
@@ -33,12 +38,15 @@ final class MapeadorFacturaGreenter
         $totales = $comprobante->totales();
 
         if ($totales === null) {
-            throw new \LogicException('No se puede mapear a Greenter un comprobante sin totales calculados.');
+            throw new LogicException('No se puede mapear a Greenter un comprobante sin totales calculados.');
         }
+
+        $tipoDoc = self::TIPOS_DOC[$comprobante->tipo()->value]
+            ?? throw new LogicException("MapeadorFacturaBoletaGreenter no soporta el tipo '{$comprobante->tipo()->value}'.");
 
         $invoice = new Invoice;
         $invoice->setUblVersion('2.1')
-            ->setTipoDoc(self::TIPO_DOC_FACTURA)
+            ->setTipoDoc($tipoDoc)
             ->setTipoOperacion(self::TIPO_OPERACION_VENTA_INTERNA)
             ->setSerie($comprobante->numero()->serie()->valor())
             ->setCorrelativo((string) $comprobante->numero()->correlativo())

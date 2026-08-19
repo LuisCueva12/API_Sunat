@@ -17,7 +17,7 @@ use Modules\Facturacion\Domain\ValueObjects\Ruc;
 use Modules\Facturacion\Domain\ValueObjects\Serie;
 use Modules\Facturacion\Domain\ValueObjects\TipoDocumentoIdentidad;
 use Modules\Facturacion\Infrastructure\Sunat\Greenter\GeneradorXmlFirmadoGreenter;
-use Modules\Facturacion\Infrastructure\Sunat\Greenter\MapeadorFacturaGreenter;
+use Modules\Facturacion\Infrastructure\Sunat\Greenter\MapeadorFacturaBoletaGreenter;
 
 function certificadoDePruebaAutofirmado(): CertificadoDigital
 {
@@ -71,8 +71,47 @@ function comprobanteFacturaCompleto(): Comprobante
     return $comprobante;
 }
 
+function comprobanteBoletaCompleto(): Comprobante
+{
+    $comprobante = Comprobante::registrar(
+        id: '01991111-2222-7333-8444-555566668888',
+        empresaId: 'empresa-test',
+        tipo: TipoComprobante::Boleta,
+        numero: new NumeroComprobante(new Serie('B001'), 1),
+        moneda: Moneda::PEN,
+        receptorDocumento: new DocumentoIdentidad(TipoDocumentoIdentidad::Dni, '12345678'),
+        receptorRazonSocial: 'Cliente Persona Natural',
+        fechaEmision: new DateTimeImmutable('2026-08-15'),
+    );
+
+    $comprobante->agregarItem(new ItemComprobante(
+        numeroOrden: 1,
+        descripcion: 'Producto de prueba',
+        unidadMedida: 'NIU',
+        cantidad: 1.0,
+        valorUnitario: Dinero::desde('50.00'),
+        precioUnitario: Dinero::desde('59.00'),
+        tipoAfectacionIgv: '10',
+        montoIgv: Dinero::desde('9.00'),
+        montoValorVenta: Dinero::desde('50.00'),
+        descuento: Dinero::cero(),
+    ));
+
+    $comprobante->definirTotales(new TotalesComprobante(
+        opGravada: Dinero::desde('50.00'),
+        opExonerada: Dinero::cero(),
+        opInafecta: Dinero::cero(),
+        opGratuita: Dinero::cero(),
+        totalIgv: Dinero::desde('9.00'),
+        totalDescuentos: Dinero::cero(),
+        total: Dinero::desde('59.00'),
+    ));
+
+    return $comprobante;
+}
+
 it('mapea una factura del dominio a un Invoice de Greenter sin errores', function () {
-    $mapeador = new MapeadorFacturaGreenter;
+    $mapeador = new MapeadorFacturaBoletaGreenter;
     $emisor = new DatosEmisor(
         ruc: new Ruc('20100070970'),
         razonSocial: 'Empresa de Prueba SAC',
@@ -99,7 +138,7 @@ it('mapea una factura del dominio a un Invoice de Greenter sin errores', functio
 })->skip(fn () => ! class_exists(Invoice::class), 'Requiere greenter/greenter instalado.');
 
 it('genera un XML firmado bien formado a partir de una factura', function () {
-    $mapeador = new MapeadorFacturaGreenter;
+    $mapeador = new MapeadorFacturaBoletaGreenter;
     $generador = new GeneradorXmlFirmadoGreenter($mapeador);
 
     $emisor = new DatosEmisor(
@@ -134,5 +173,56 @@ it('genera un XML firmado bien formado a partir de una factura', function () {
             'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2',
             'CityName',
         )->item(0)?->nodeValue)->toBe('LIMA')
+        ->and($xml)->toContain('<ds:Signature');
+});
+
+it('mapea una boleta del dominio a un Invoice de Greenter con tipoDoc 03', function () {
+    $mapeador = new MapeadorFacturaBoletaGreenter;
+    $emisor = new DatosEmisor(
+        ruc: new Ruc('20100070970'),
+        razonSocial: 'Empresa de Prueba SAC',
+        nombreComercial: null,
+        direccion: 'Av. Prueba 123',
+        ubigeo: '150101',
+        departamento: 'LIMA',
+        provincia: 'LIMA',
+        distrito: 'LIMA',
+    );
+
+    $invoice = $mapeador->mapear(comprobanteBoletaCompleto(), $emisor);
+
+    expect($invoice->getTipoDoc())->toBe('03')
+        ->and($invoice->getSerie())->toBe('B001')
+        ->and($invoice->getClient()->getTipoDoc())->toBe('1')
+        ->and($invoice->getMtoImpVenta())->toBe(59.0);
+})->skip(fn () => ! class_exists(Invoice::class), 'Requiere greenter/greenter instalado.');
+
+it('genera un XML firmado bien formado a partir de una boleta', function () {
+    $mapeador = new MapeadorFacturaBoletaGreenter;
+    $generador = new GeneradorXmlFirmadoGreenter($mapeador);
+
+    $emisor = new DatosEmisor(
+        ruc: new Ruc('20100070970'),
+        razonSocial: 'Empresa de Prueba SAC',
+        nombreComercial: null,
+        direccion: 'Av. Prueba 123',
+        ubigeo: '150101',
+        departamento: 'LIMA',
+        provincia: 'LIMA',
+        distrito: 'LIMA',
+    );
+
+    $xml = $generador->generar(comprobanteBoletaCompleto(), $emisor, certificadoDePruebaAutofirmado());
+
+    expect($xml)->toBeString()->not->toBeEmpty();
+
+    $documento = new DOMDocument;
+    $cargado = $documento->loadXML($xml);
+
+    expect($cargado)->toBeTrue('El XML generado debe ser XML bien formado')
+        ->and($documento->getElementsByTagNameNS(
+            'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2',
+            'InvoiceTypeCode',
+        )->item(0)?->nodeValue)->toBe('03')
         ->and($xml)->toContain('<ds:Signature');
 });

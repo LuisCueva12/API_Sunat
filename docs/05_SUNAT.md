@@ -46,6 +46,10 @@ curl -X POST http://localhost:8000/api/v1/facturas \
 
 Fuente: [Manual del programador SEE - Sistemas del Contribuyente](https://cpe.sunat.gob.pe/sites/default/files/inline-files/manual_programador%20%281%29.pdf), sección Servicio Beta.
 
+### Catálogos 09 y 10 — Motivos de Nota de Crédito y Nota de Débito
+
+`Modules\Facturacion\Domain\Comprobante\MotivoNotaCredito` (13 códigos, `01`–`13`) y `MotivoNotaDebito` (5 códigos: `01`, `02`, `03`, `11`, `12`) implementan los catálogos oficiales. Fuente: Resolución de Superintendencia N.° 193-2020/SUNAT, [anexo 3](https://www.sunat.gob.pe/legislacion/superin/2020/anexo3-193-2020.pdf), confirmada además contra [Factpro — Catálogo 09](https://docs.factpro.la/catalogos-sunat/catalogo-09-codigos-de-tipo-de-nota-de-credito-electronica) y [Factpro — Catálogo 10](https://docs.factpro.la/catalogos-sunat/catalogo-10-codigos-de-tipo-de-nota-de-debito.md). Los códigos `02` y `03` del catálogo 09 tienen una restricción adicional (no aplican a notas que referencian comprobantes impresos/de imprenta autorizada) que no se implementó: como este proyecto es 100% SEE - Del Contribuyente (comprobantes electrónicos desde su origen, nunca convertidos desde papel), esa restricción no aplica a ningún comprobante que este sistema pueda emitir.
+
 ### Resultado BETA verificado
 
 El 19 de agosto de 2026 se completó un envío real con el RUC y credenciales públicas de prueba. SUNAT devolvió código `0`, descripción de factura aceptada y un CDR sin observaciones para `F001-2`. El XML aceptado incluyó:
@@ -56,6 +60,10 @@ El 19 de agosto de 2026 se completó un envío real con el RUC y credenciales p�
 - domicilio fiscal con código de local `0000`, ubigeo, departamento, provincia y distrito.
 
 Los errores BETA `3030`, `3205` y `3244` permitieron completar esos campos. En particular, la [matriz oficial de reglas de validación CPE](https://cpe.sunat.gob.pe/guias-y-manuales) confirma que `3244` exige el bloque de forma de pago, no el tipo de operación. El comando `facturacion:preparar-beta` provisiona todos los datos geográficos requeridos para repetir la prueba.
+
+### Resultado BETA verificado — Boleta
+
+El 19 de agosto de 2026 se emitió una boleta (`B001-1`, receptor con DNI) con el mismo flujo API → cola → SUNAT BETA y quedó `ACEPTADO`, con XML y CDR reales. Confirma que `MapeadorFacturaBoletaGreenter` (`Invoice` de Greenter con `tipoDoc=03`, catálogo 1 SUNAT) no necesita nada adicional a lo que ya exige Factura — comparten `InvoiceBuilder`, forma de pago y domicilio fiscal. Antes de este mapeo, cualquier intento de emitir una Boleta fallaba antes de llegar a SUNAT (ver `docs/00_ESTADO_PROYECTO.md`, registro del mismo día).
 
 ### Certificado de producción
 
@@ -89,7 +97,7 @@ Verificado leyendo `vendor/greenter/greenter` directamente, no asumido:
 
 ## Pendiente de verificar antes de Fase 3 (no asumir — documentar aquí la fuente oficial en cuanto se confirme)
 
-- [ ] Envío individual de boleta (`sendBill`) vs. resumen diario (`sendSummary`) — vigencia normativa actual.
+- [ ] Envío individual de boleta (`sendBill`) vs. resumen diario (`sendSummary`) — vigencia normativa actual. Parcialmente investigado el 2026-08-19: a nivel técnico Greenter sí soporta `sendSummary` (documento `Greenter\Model\Summary\Summary`, `SummaryBuilder`) y la "Comunicación de Baja" para anular una boleta ya emitida sin Nota de Crédito (documento `Greenter\Model\Voided\Voided`, `VoidedBuilder`, enviado con `See::send()` igual que una factura), con resultado asíncrono consultable vía `See::getStatus($ticket)`. Falta confirmar con la fuente oficial (manual SEE - Del Contribuyente) la regla exacta de plazo para presentar la baja — no implementado todavía, no se debe adivinar el plazo.
 - [ ] Formato de series para NC/ND vigente.
 - [ ] Contenido exacto requerido del QR en la representación impresa.
 - [ ] Regla de redondeo tributario esperada por SUNAT.

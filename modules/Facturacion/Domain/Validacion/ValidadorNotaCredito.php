@@ -6,6 +6,7 @@ namespace Modules\Facturacion\Domain\Validacion;
 
 use Modules\Facturacion\Domain\Comprobante\Comprobante;
 use Modules\Facturacion\Domain\Comprobante\EstadoComprobante;
+use Modules\Facturacion\Domain\Comprobante\MotivoNotaCredito;
 use Modules\Facturacion\Domain\Comprobante\TipoComprobante;
 use Modules\Facturacion\Domain\Excepciones\ComprobanteInvalidoException;
 use Modules\Facturacion\Domain\Puertos\RepositorioComprobante;
@@ -30,6 +31,12 @@ final class ValidadorNotaCredito implements ValidadorComprobante
 
         if (trim($referencia->descripcionMotivo()) === '') {
             throw new ComprobanteInvalidoException('El motivo de la nota de crédito es obligatorio.');
+        }
+
+        if (MotivoNotaCredito::tryFrom($referencia->codigoMotivo()) === null) {
+            throw new ComprobanteInvalidoException(
+                "El código de motivo '{$referencia->codigoMotivo()}' no pertenece al catálogo 09 de SUNAT (tipo de nota de crédito electrónica).",
+            );
         }
 
         $original = $this->repositorio->buscarPorId($comprobante->empresaId(), $referencia->comprobanteId());

@@ -9,7 +9,7 @@ use Modules\Facturacion\Domain\Comprobante\TipoComprobante;
 use Modules\Facturacion\Domain\Comprobante\TotalesComprobante;
 use Modules\Facturacion\Domain\Excepciones\ComprobanteInvalidoException;
 use Modules\Facturacion\Domain\Puertos\RepositorioComprobante;
-use Modules\Facturacion\Domain\Validacion\ValidadorNotaCredito;
+use Modules\Facturacion\Domain\Validacion\ValidadorNotaDebito;
 use Modules\Facturacion\Domain\ValueObjects\Dinero;
 use Modules\Facturacion\Domain\ValueObjects\DocumentoIdentidad;
 use Modules\Facturacion\Domain\ValueObjects\Moneda;
@@ -18,7 +18,7 @@ use Modules\Facturacion\Domain\ValueObjects\Ruc;
 use Modules\Facturacion\Domain\ValueObjects\Serie;
 use Modules\Facturacion\Domain\ValueObjects\TipoDocumentoIdentidad;
 
-function repositorioComprobanteFalso(?Comprobante $comprobanteExistente): RepositorioComprobante
+function repositorioComprobanteFalsoParaDebito(?Comprobante $comprobanteExistente): RepositorioComprobante
 {
     return new class($comprobanteExistente) implements RepositorioComprobante
     {
@@ -35,10 +35,10 @@ function repositorioComprobanteFalso(?Comprobante $comprobanteExistente): Reposi
     };
 }
 
-function facturaAceptadaDePrueba(): Comprobante
+function facturaAceptadaParaDebito(): Comprobante
 {
     $factura = Comprobante::registrar(
-        id: 'factura-original',
+        id: 'factura-original-nd',
         empresaId: 'empresa-test',
         tipo: TipoComprobante::Factura,
         numero: new NumeroComprobante(new Serie('F001'), 1),
@@ -53,13 +53,13 @@ function facturaAceptadaDePrueba(): Comprobante
     return $factura;
 }
 
-function notaCreditoDePrueba(?ReferenciaComprobante $referencia, bool $conItem = true): Comprobante
+function notaDebitoDePrueba(?ReferenciaComprobante $referencia, bool $conItem = true): Comprobante
 {
     $comprobante = Comprobante::registrar(
-        id: 'nc-test',
+        id: 'nd-test',
         empresaId: 'empresa-test',
-        tipo: TipoComprobante::NotaCredito,
-        numero: new NumeroComprobante(new Serie('FC01'), 1),
+        tipo: TipoComprobante::NotaDebito,
+        numero: new NumeroComprobante(new Serie('FD01'), 1),
         moneda: Moneda::PEN,
         receptorDocumento: new DocumentoIdentidad(TipoDocumentoIdentidad::Ruc, (string) new Ruc('20100070970')),
         receptorRazonSocial: 'Cliente SAC',
@@ -70,61 +70,61 @@ function notaCreditoDePrueba(?ReferenciaComprobante $referencia, bool $conItem =
     if ($conItem) {
         $comprobante->agregarItem(new ItemComprobante(
             numeroOrden: 1,
-            descripcion: 'Devolución parcial',
+            descripcion: 'Intereses por mora',
             unidadMedida: 'NIU',
             cantidad: 1.0,
-            valorUnitario: Dinero::desde('100.00'),
-            precioUnitario: Dinero::desde('118.00'),
+            valorUnitario: Dinero::desde('50.00'),
+            precioUnitario: Dinero::desde('59.00'),
             tipoAfectacionIgv: '10',
-            montoIgv: Dinero::desde('18.00'),
-            montoValorVenta: Dinero::desde('100.00'),
+            montoIgv: Dinero::desde('9.00'),
+            montoValorVenta: Dinero::desde('50.00'),
             descuento: Dinero::cero(),
         ));
         $comprobante->definirTotales(new TotalesComprobante(
-            opGravada: Dinero::desde('100.00'),
+            opGravada: Dinero::desde('50.00'),
             opExonerada: Dinero::cero(),
             opInafecta: Dinero::cero(),
             opGratuita: Dinero::cero(),
-            totalIgv: Dinero::desde('18.00'),
+            totalIgv: Dinero::desde('9.00'),
             totalDescuentos: Dinero::cero(),
-            total: Dinero::desde('118.00'),
+            total: Dinero::desde('59.00'),
         ));
     }
 
     return $comprobante;
 }
 
-it('acepta una nota de crédito que referencia una factura existente con motivo', function () {
-    $referencia = new ReferenciaComprobante('factura-original', '01', 'Anulación de la operación');
-    $repositorio = repositorioComprobanteFalso(facturaAceptadaDePrueba());
+it('acepta una nota de débito que referencia una factura existente con motivo', function () {
+    $referencia = new ReferenciaComprobante('factura-original-nd', '01', 'Intereses por mora');
+    $repositorio = repositorioComprobanteFalsoParaDebito(facturaAceptadaParaDebito());
 
-    (new ValidadorNotaCredito($repositorio))->validar(notaCreditoDePrueba($referencia));
+    (new ValidadorNotaDebito($repositorio))->validar(notaDebitoDePrueba($referencia));
 })->throwsNoExceptions();
 
-it('rechaza una nota de crédito sin referencia', function () {
-    $repositorio = repositorioComprobanteFalso(null);
+it('rechaza una nota de débito sin referencia', function () {
+    $repositorio = repositorioComprobanteFalsoParaDebito(null);
 
-    (new ValidadorNotaCredito($repositorio))->validar(notaCreditoDePrueba(null));
+    (new ValidadorNotaDebito($repositorio))->validar(notaDebitoDePrueba(null));
 })->throws(ComprobanteInvalidoException::class);
 
-it('rechaza una nota de crédito cuyo comprobante referenciado no existe', function () {
+it('rechaza una nota de débito cuyo comprobante referenciado no existe', function () {
     $referencia = new ReferenciaComprobante('no-existe', '01', 'Motivo cualquiera');
-    $repositorio = repositorioComprobanteFalso(null);
+    $repositorio = repositorioComprobanteFalsoParaDebito(null);
 
-    (new ValidadorNotaCredito($repositorio))->validar(notaCreditoDePrueba($referencia));
+    (new ValidadorNotaDebito($repositorio))->validar(notaDebitoDePrueba($referencia));
 })->throws(ComprobanteInvalidoException::class);
 
-it('rechaza una nota de crédito que referencia otra nota de crédito', function () {
-    $notaOriginal = notaCreditoDePrueba(new ReferenciaComprobante('factura-original', '01', 'Motivo'));
-    $referencia = new ReferenciaComprobante('nc-original', '01', 'Motivo');
-    $repositorio = repositorioComprobanteFalso($notaOriginal);
+it('rechaza un código de motivo que no pertenece al catálogo 10 de SUNAT', function () {
+    $referencia = new ReferenciaComprobante('factura-original-nd', '99', 'Motivo inventado');
+    $repositorio = repositorioComprobanteFalsoParaDebito(facturaAceptadaParaDebito());
 
-    (new ValidadorNotaCredito($repositorio))->validar(notaCreditoDePrueba($referencia));
+    (new ValidadorNotaDebito($repositorio))->validar(notaDebitoDePrueba($referencia));
+})->throws(ComprobanteInvalidoException::class, "El código de motivo '99' no pertenece al catálogo 10 de SUNAT");
+
+it('rechaza un código de motivo del catálogo de nota de crédito reutilizado en una nota de débito', function () {
+    // '06' (Devolución total) es válido en el catálogo 09 pero no existe en el catálogo 10.
+    $referencia = new ReferenciaComprobante('factura-original-nd', '06', 'Devolución total');
+    $repositorio = repositorioComprobanteFalsoParaDebito(facturaAceptadaParaDebito());
+
+    (new ValidadorNotaDebito($repositorio))->validar(notaDebitoDePrueba($referencia));
 })->throws(ComprobanteInvalidoException::class);
-
-it('rechaza un código de motivo que no pertenece al catálogo 09 de SUNAT', function () {
-    $referencia = new ReferenciaComprobante('factura-original', '99', 'Motivo inventado');
-    $repositorio = repositorioComprobanteFalso(facturaAceptadaDePrueba());
-
-    (new ValidadorNotaCredito($repositorio))->validar(notaCreditoDePrueba($referencia));
-})->throws(ComprobanteInvalidoException::class, "El código de motivo '99' no pertenece al catálogo 09 de SUNAT");

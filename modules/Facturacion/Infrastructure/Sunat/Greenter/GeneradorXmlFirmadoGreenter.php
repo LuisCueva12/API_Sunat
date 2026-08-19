@@ -20,13 +20,13 @@ final class GeneradorXmlFirmadoGreenter implements GeneradorXmlFirmado
     private const CBC_NAMESPACE = 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2';
 
     public function __construct(
-        private readonly MapeadorFacturaGreenter $mapeadorFactura,
+        private readonly MapeadorFacturaBoletaGreenter $mapeadorFacturaBoleta,
     ) {}
 
     public function generar(Comprobante $comprobante, DatosEmisor $emisor, CertificadoDigital $certificado): string
     {
         $documento = match ($comprobante->tipo()) {
-            TipoComprobante::Factura => $this->mapeadorFactura->mapear($comprobante, $emisor),
+            TipoComprobante::Factura, TipoComprobante::Boleta => $this->mapeadorFacturaBoleta->mapear($comprobante, $emisor),
             default => throw new LogicException(
                 "Tipo de comprobante '{$comprobante->tipo()->value}' aún no soportado por GeneradorXmlFirmadoGreenter."
             ),
