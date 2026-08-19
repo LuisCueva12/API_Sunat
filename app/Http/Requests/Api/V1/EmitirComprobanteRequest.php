@@ -7,17 +7,11 @@ namespace App\Http\Requests\Api\V1;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-/**
- * Solo formato/presencia (ver docs/01_ARQUITECTURA.md punto 29 del brief
- * original: validación de formato vs. reglas de negocio). Que el receptor
- * deba tener RUC en factura, o que una nota exija referencia válida, son
- * reglas de negocio — viven en los Validador* de Domain, no aquí.
- */
 class EmitirComprobanteRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true; // autenticación/autorización ya resuelta por middleware
+        return true;
     }
 
     /**

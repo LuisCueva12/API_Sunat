@@ -10,12 +10,6 @@ use Modules\Facturacion\Domain\ValueObjects\DocumentoIdentidad;
 use Modules\Facturacion\Domain\ValueObjects\Moneda;
 use Modules\Facturacion\Domain\ValueObjects\NumeroComprobante;
 
-/**
- * Agregado raíz. Un único tipo de entidad para los 4 tipos documentales de
- * la V1 (discriminados por TipoComprobante) — el pipeline técnico es
- * idéntico entre ellos; las reglas específicas por tipo viven en
- * Domain/Validacion, no aquí. Ver docs/01_ARQUITECTURA.md §3.
- */
 final class Comprobante
 {
     /** @var ItemComprobante[] */
@@ -67,11 +61,6 @@ final class Comprobante
         );
     }
 
-    /**
-     * Reconstruye un Comprobante desde su estado ya persistido (cualquier
-     * EstadoComprobante, no solo Registrado) — usado por los repositorios al
-     * leer de la base de datos. registrar() es solo para comprobantes nuevos.
-     */
     public static function reconstituir(
         string $id,
         string $empresaId,

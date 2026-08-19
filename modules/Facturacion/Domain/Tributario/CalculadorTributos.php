@@ -10,13 +10,7 @@ use Modules\Facturacion\Domain\Comprobante\Tributo;
 use Modules\Facturacion\Domain\Excepciones\ComprobanteInvalidoException;
 use Modules\Facturacion\Domain\ValueObjects\Dinero;
 
-/**
- * V1 solo soporta operación gravada (catálogo 07 SUNAT código '10') — es el
- * único escenario que pide el alcance actual (ver docs/01_ARQUITECTURA.md
- * §13, "Facturas"). Exonerado/inafecto/gratuito quedan explícitamente fuera:
- * mejor rechazar un código no soportado que calcular un total incompleto en
- * silencio.
- */
+
 final class CalculadorTributos
 {
     private const TASA_IGV = 0.18;

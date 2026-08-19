@@ -10,11 +10,7 @@ final class Serie
 {
     private readonly string $valor;
 
-    // 4 caracteres alfanuméricos en mayúscula: cubre tanto "F001"/"B001"
-    // como el formato histórico "FC01"/"BC01" de notas — el formato exacto
-    // vigente por tipo de comprobante se confirma en Fase 5 (ver
-    // docs/05_SUNAT.md) y se aplica en el validador específico de cada tipo,
-    // no aquí.
+
     public function __construct(string $valor)
     {
         $valor = strtoupper(trim($valor));

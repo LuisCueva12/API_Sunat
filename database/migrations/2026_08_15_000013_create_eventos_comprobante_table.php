@@ -10,8 +10,6 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // bigserial, no uuid: log append-only sin referencia pública externa
-        // (ver docs/03_BASE_DATOS.md). Sin updated_at — es inmutable.
         Schema::create('eventos_comprobante', function (Blueprint $table) {
             $table->id();
             $table->foreignUuid('comprobante_id')->constrained('comprobantes');

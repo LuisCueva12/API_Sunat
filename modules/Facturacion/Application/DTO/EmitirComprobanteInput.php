@@ -17,7 +17,7 @@ final class EmitirComprobanteInput
         public readonly string $receptorRazonSocial,
         public readonly array $items,
         public readonly string $moneda = 'PEN',
-        // Solo Nota de Crédito/Débito: comprobante que se referencia y motivo.
+
         public readonly ?string $comprobanteReferenciaId = null,
         public readonly ?string $codigoMotivo = null,
         public readonly ?string $descripcionMotivo = null,

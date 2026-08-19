@@ -4,13 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\ApiKeys;
 
-/**
- * Hash SHA-256 simple, no bcrypt/Argon2: la key ya es de alta entropía
- * (32 caracteres aleatorios criptográficamente seguros), así que no hace
- * falta un hash lento pensado para resistir fuerza bruta sobre secretos de
- * baja entropía como contraseñas — eso solo agregaría costo sin beneficio
- * real aquí. Permite además una búsqueda exacta indexada por hash.
- */
 final class GeneradorApiKey
 {
     private const PREFIJO_BASE = 'fe_live_';

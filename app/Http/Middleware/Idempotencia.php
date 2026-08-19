@@ -12,13 +12,6 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
 
-/**
- * Debe ir después de AutenticarApiKey (necesita empresa_id resuelto).
- * Postgres es la fuente de verdad del dedupe (PK compuesta empresa_id+clave
- * en idempotency_keys) — el INSERT fallando por violación de esa PK es lo
- * que realmente serializa solicitudes concurrentes con la misma clave, no
- * el SELECT previo (que es solo camino feliz optimista).
- */
 final class Idempotencia
 {
     private const CODIGO_UNIQUE_VIOLATION = '23505';
@@ -39,11 +32,6 @@ final class Idempotencia
             ->where('clave', $clave)
             ->first();
 
-        // DB::table() no castea columnas timestamp a Carbon — sin parsear
-        // explícito, esto compara un string contra un objeto (bug real,
-        // encontrado en revisión: nunca se pudo probar contra Postgres real
-        // en esta sesión). Ver la misma clase de problema con 'activa' en
-        // AsignadorCorrelativoPostgres.
         if ($existente !== null && Carbon::parse($existente->expira_at)->isFuture()) {
             return $this->responderDesdeExistente($existente, $hashSolicitud);
         }

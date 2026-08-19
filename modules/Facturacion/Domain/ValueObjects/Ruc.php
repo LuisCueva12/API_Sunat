@@ -29,9 +29,7 @@ final class Ruc
         $this->valor = $valor;
     }
 
-    // Algoritmo módulo 11 estándar para RUC peruano. Verificar contra la
-    // especificación oficial SUNAT antes de depender de esto en producción
-    // (ver docs/05_SUNAT.md — pendiente de verificar).
+
     private static function digitoVerificadorValido(string $ruc): bool
     {
         $factores = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2];

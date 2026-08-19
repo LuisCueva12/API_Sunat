@@ -15,12 +15,7 @@ use Modules\Facturacion\Domain\ValueObjects\CertificadoDigital;
 use Modules\Facturacion\Domain\ValueObjects\Ruc;
 use Modules\Facturacion\Infrastructure\Sunat\Greenter\ConfiguracionSunat;
 
-/**
- * Único lugar de la aplicación que lee certificados_digitales/
- * credenciales_sunat y los descifra — todo lo que sale de aquí vive
- * transitoriamente en memoria durante el pipeline de envío, nunca se
- * vuelve a persistir en claro.
- */
+
 final class ProveedorDatosSunatEloquent implements ProveedorDatosSunat
 {
     public function paraEmpresa(string $empresaId, string $entorno): DatosSunatEmpresa

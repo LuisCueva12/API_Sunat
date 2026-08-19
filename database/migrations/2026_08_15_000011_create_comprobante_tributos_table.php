@@ -10,9 +10,6 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Agregado por tipo de tributo a nivel de comprobante (no por línea —
-        // eso ya está en comprobante_items.monto_igv). Permite sumar ICBPER u
-        // otros tributos simples sin cambiar el esquema.
         Schema::create('comprobante_tributos', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('comprobante_id')->constrained('comprobantes');

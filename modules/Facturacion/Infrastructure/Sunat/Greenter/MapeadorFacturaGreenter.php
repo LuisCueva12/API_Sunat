@@ -16,16 +16,7 @@ use Modules\Facturacion\Domain\Comprobante\ItemComprobante;
 use Modules\Facturacion\Domain\Empresa\DatosEmisor;
 use Modules\Facturacion\Domain\ValueObjects\Dinero;
 
-/**
- * Traduce Comprobante (dominio, tipo FACTURA) a Greenter\Model\Sale\Invoice.
- * Único lugar de la aplicación que conoce a la vez el modelo de dominio y
- * las clases Model\* de Greenter — ver docs/01_ARQUITECTURA.md §9.
- *
- * Catálogo 01 (tipo de documento) y el mapeo de moneda a nombre en el
- * Legend obligatorio son best-effort verificados contra la documentación
- * de Greenter/SUNAT disponible al momento de escribir esto; confirmar
- * antes de producción (ver docs/05_SUNAT.md).
- */
+
 final class MapeadorFacturaGreenter
 {
     private const TIPO_DOC_FACTURA = '01';

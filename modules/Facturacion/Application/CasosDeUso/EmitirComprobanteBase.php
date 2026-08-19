@@ -22,13 +22,6 @@ use Modules\Facturacion\Domain\ValueObjects\Moneda;
 use Modules\Facturacion\Domain\ValueObjects\Serie;
 use Modules\Facturacion\Domain\ValueObjects\TipoDocumentoIdentidad;
 
-/**
- * Orquestación común a los 4 casos de uso Emitir* — asignar correlativo,
- * calcular tributos, construir el comprobante, validar y persistir, todo
- * en una única transacción. Lo único que cambia entre Factura/Boleta/
- * NotaCredito/NotaDebito es el TipoComprobante y el ValidadorComprobante
- * inyectado (contextual binding en DomainServiceProvider) — no el flujo.
- */
 abstract class EmitirComprobanteBase
 {
     public function __construct(
@@ -101,10 +94,6 @@ abstract class EmitirComprobanteBase
             return $comprobante;
         });
 
-        // Fuera de la transacción a propósito: recién aquí es seguro saber
-        // que el comprobante quedó realmente confirmado en BD. Despachar
-        // el job dentro del closure arriesgaría encolar el procesamiento
-        // de un comprobante que un rollback posterior deja sin existir.
         $this->despachador->despacharEnvio($comprobante->empresaId(), $comprobante->id());
 
         return $comprobante;

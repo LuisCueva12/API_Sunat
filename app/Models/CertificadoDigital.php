@@ -12,12 +12,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
 /**
- * contenido_cifrado/password_cifrado usan el cast 'encrypted' nativo de
- * Eloquent (Crypt de Laravel por debajo) — nunca se implementa cifrado
- * propio. El nombre de columna deja explícito que en BD vive el
- * ciphertext; leer el atributo en PHP devuelve el texto plano ya
- * descifrado de forma transparente.
- *
  * @property string $id
  * @property string $empresa_id
  * @property string|null $alias

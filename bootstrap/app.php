@@ -87,10 +87,6 @@ return Application::configure(basePath: dirname(__DIR__))
             return RespuestaApi::error('NO_ENCONTRADO', 'El recurso solicitado no existe.', 404);
         });
 
-        // Nunca exponer excepciones internas ni stack traces (ver
-        // docs/06_SEGURIDAD.md) — cualquier HttpExceptionInterface con
-        // status propio se respeta, todo lo demás se convierte en 500
-        // genérico. El detalle real solo va al log.
         $exceptions->render(function (Throwable $e, Request $request) {
             if (! $request->is('api/*')) {
                 return null;

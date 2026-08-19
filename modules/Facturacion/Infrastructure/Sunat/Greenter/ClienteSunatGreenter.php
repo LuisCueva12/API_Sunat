@@ -11,13 +11,7 @@ use Modules\Facturacion\Domain\Comprobante\ResultadoEnvio;
 use Modules\Facturacion\Domain\Puertos\EnviadorComprobanteElectronico;
 use Throwable;
 
-/**
- * Requiere ext-soap instalado (Greenter\Ws\Services\SoapClient extends
- * \SoapClient nativo) — confirmado leyendo el código fuente del paquete,
- * no asumido. Sin ext-soap esta clase falla al primer envío real, aunque
- * el resto de la aplicación (incluida la generación/firma de XML) funciona
- * igual sin ella.
- */
+
 final class ClienteSunatGreenter implements EnviadorComprobanteElectronico
 {
     public function __construct(

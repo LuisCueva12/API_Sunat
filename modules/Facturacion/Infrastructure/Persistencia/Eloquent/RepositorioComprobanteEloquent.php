@@ -100,11 +100,6 @@ final class RepositorioComprobanteEloquent implements RepositorioComprobante
         ?string $xmlSha256 = null,
         ?string $cdrSha256 = null,
     ): void {
-        // estado/intentos_envio/ultimo_error siempre reflejan el estado
-        // actual de la entidad (incluye "limpiar" ultimo_error a null al
-        // pasar a un estado de éxito). xml_sha256/cdr_sha256 en cambio son
-        // artefactos que se fijan una sola vez en pasos distintos del
-        // pipeline — solo se tocan si esta llamada los trae.
         $datos = [
             'estado' => $comprobante->estado()->value,
             'intentos_envio' => $comprobante->intentosEnvio(),

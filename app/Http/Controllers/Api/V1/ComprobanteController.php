@@ -10,24 +10,10 @@ use App\Models\Comprobante as ComprobanteEloquent;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-/**
- * Genérico sobre los 4 tipos — ver docs/04_API.md. Consulta directamente el
- * modelo Eloquent (no pasa por RepositorioComprobante/Domain): son lecturas
- * de solo despliegue sin invariantes de negocio que proteger, reconstruir
- * la entidad de dominio completa aquí sería costo sin beneficio real.
- *
- * empresa_id siempre sale de $request->attributes (resuelto por
- * AutenticarApiKey), nunca de la URL/query — es lo único que garantiza que
- * una empresa jamás vea comprobantes de otra.
- */
 final class ComprobanteController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        // Validado explícito: sin esto, un fecha_desde/fecha_hasta mal
-        // formado revienta en Carbon::parse() como excepción no controlada
-        // (Request::date() no valida) y termina en 500 genérico en vez de
-        // un 422 claro — encontrado en revisión de código, no en runtime.
         $request->validate([
             'tipo' => ['sometimes', 'string'],
             'estado' => ['sometimes', 'string'],

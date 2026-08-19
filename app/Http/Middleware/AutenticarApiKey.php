@@ -11,12 +11,6 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-/**
- * empresa_id siempre se deriva de aquí — nunca se acepta como campo del
- * body/query de un request (evita IDOR entre tenants, ver docs/06
- * _SEGURIDAD.md). Los controladores solo deben leer
- * $request->attributes->get('empresa_id'), nunca confiar en el input.
- */
 final class AutenticarApiKey
 {
     public function __construct(

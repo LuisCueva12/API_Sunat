@@ -12,11 +12,7 @@ interface RepositorioComprobante
 
     public function buscarPorId(string $empresaId, string $id): ?Comprobante;
 
-    /**
-     * Actualiza estado, intentos_envio y ultimo_error de un comprobante ya
-     * persistido — nunca reescribe items/tributos/totales, que son
-     * inmutables una vez guardado el comprobante original.
-     */
+
     public function actualizarEstado(
         Comprobante $comprobante,
         ?string $xmlSha256 = null,

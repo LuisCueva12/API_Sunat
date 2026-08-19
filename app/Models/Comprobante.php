@@ -13,10 +13,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /**
- * Todos los montos se exponen como string (sin cast numérico) a propósito:
- * evita que Eloquent los convierta a float en algún punto del camino. El VO
- * Dinero del dominio los parsea desde string.
- *
  * @property string $id
  * @property string $empresa_id
  * @property string $tipo

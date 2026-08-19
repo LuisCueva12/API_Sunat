@@ -11,12 +11,6 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Modules\Facturacion\Application\CasosDeUso\ProcesarEnvioComprobante;
 
-/**
- * Delgado a propósito: solo resuelve el caso de uso del contenedor y lo
- * invoca — toda la orquestación real vive en Application, no aquí (mismo
- * principio que los controladores). El único trabajo propio de este Job es
- * lo que es responsabilidad de la cola: reintentos, backoff, entorno.
- */
 final class ProcesarComprobante implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;

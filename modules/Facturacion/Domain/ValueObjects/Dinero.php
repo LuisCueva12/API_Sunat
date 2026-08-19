@@ -6,11 +6,7 @@ namespace Modules\Facturacion\Domain\ValueObjects;
 
 use InvalidArgumentException;
 
-/**
- * Respaldado por un entero (centavos), nunca float ni bcmath — bcmath no
- * está disponible en todos los entornos y trabajar en centavos evita el
- * problema de raíz sin depender de una extensión adicional.
- */
+
 final class Dinero
 {
     private function __construct(private readonly int $centavos) {}
@@ -25,8 +21,7 @@ final class Dinero
         return new self(0);
     }
 
-    // Parseo por string, nunca por (float), para no perder precisión decimal
-    // al convertir "125.50" en centavos.
+
     public static function desde(string $monto): self
     {
         $monto = trim($monto);
@@ -53,8 +48,7 @@ final class Dinero
         return new self($this->centavos - $otro->centavos);
     }
 
-    // Redondeo half-up sobre centavos — ver docs/05_SUNAT.md para la regla
-    // de redondeo tributario exacta pendiente de verificar.
+
     public function multiplicarPor(float $factor): self
     {
         return new self((int) round($this->centavos * $factor));

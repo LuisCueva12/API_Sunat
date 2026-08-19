@@ -4,13 +4,6 @@ declare(strict_types=1);
 
 namespace Modules\Facturacion\Domain\Comprobante;
 
-/**
- * Resultado de intentar enviar un comprobante a SUNAT. Distingue tres
- * desenlaces posibles — no un simple success/failed (ver docs/01
- * _ARQUITECTURA.md §5): aceptado, aceptado con observaciones, rechazado
- * (los tres son respuestas SUNAT válidas), o error técnico (nunca llegó a
- * obtener una respuesta definitiva).
- */
 final class ResultadoEnvio
 {
     private function __construct(

@@ -9,12 +9,7 @@ use Modules\Facturacion\Domain\Comprobante\TipoComprobante;
 use Modules\Facturacion\Domain\Excepciones\ComprobanteInvalidoException;
 use Modules\Facturacion\Domain\ValueObjects\TipoDocumentoIdentidad;
 
-/**
- * Receptor con DNI, carnet de extranjería, pasaporte o sin documento — no
- * RUC (para eso está Factura). Pendiente de verificar el umbral de monto a
- * partir del cual SUNAT exige identificación obligatoria del receptor en
- * boleta (ver docs/05_SUNAT.md) — no implementado todavía en V1.
- */
+
 final class ValidadorBoleta implements ValidadorComprobante
 {
     public function validar(Comprobante $comprobante): void

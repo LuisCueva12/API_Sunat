@@ -14,18 +14,6 @@ use Modules\Facturacion\Domain\Puertos\ProveedorDatosSunat;
 use Modules\Facturacion\Domain\Puertos\RepositorioComprobante;
 use Throwable;
 
-/**
- * Genera XML, firma, guarda el artefacto, envía a SUNAT, interpreta la
- * respuesta y transiciona el estado — todo lo que EmitirFactura (y
- * hermanos) deja pendiente tras persistir en REGISTRADO. Deliberadamente
- * sin GestorTransacciones envolviendo todo esto: nunca una llamada de red
- * a SUNAT dentro de una transacción larga de BD (ver docs/01
- * _ARQUITECTURA.md §40) — cada actualizarEstado() es su propia operación
- * corta.
- *
- * No lee config() ni nada de Illuminate — Application solo depende de
- * Domain. $entorno lo resuelve quien invoca (el Job en app/Jobs).
- */
 final class ProcesarEnvioComprobante
 {
     public function __construct(
@@ -45,7 +33,7 @@ final class ProcesarEnvioComprobante
         }
 
         if (! $this->iniciarProcesamiento($comprobante)) {
-            return; // estado terminal o ya en curso: no hay nada que hacer
+            return;
         }
 
         $this->repositorio->actualizarEstado($comprobante);
