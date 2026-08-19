@@ -6,7 +6,6 @@ namespace Modules\Facturacion\Domain\ValueObjects;
 
 use InvalidArgumentException;
 
-
 final class CertificadoDigital
 {
     public function __construct(

@@ -9,7 +9,6 @@ use Modules\Facturacion\Domain\Comprobante\TipoComprobante;
 use Modules\Facturacion\Domain\Excepciones\ComprobanteInvalidoException;
 use Modules\Facturacion\Domain\ValueObjects\TipoDocumentoIdentidad;
 
-
 final class ValidadorBoleta implements ValidadorComprobante
 {
     public function validar(Comprobante $comprobante): void

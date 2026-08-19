@@ -16,7 +16,6 @@ use Modules\Facturacion\Domain\Comprobante\ItemComprobante;
 use Modules\Facturacion\Domain\Empresa\DatosEmisor;
 use Modules\Facturacion\Domain\ValueObjects\Dinero;
 
-
 final class MapeadorFacturaGreenter
 {
     private const TIPO_DOC_FACTURA = '01';

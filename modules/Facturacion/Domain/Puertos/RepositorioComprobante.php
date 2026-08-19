@@ -12,7 +12,6 @@ interface RepositorioComprobante
 
     public function buscarPorId(string $empresaId, string $id): ?Comprobante;
 
-
     public function actualizarEstado(
         Comprobante $comprobante,
         ?string $xmlSha256 = null,

@@ -7,7 +7,6 @@ namespace Modules\Facturacion\Infrastructure\Storage;
 use Illuminate\Support\Facades\Storage;
 use Modules\Facturacion\Domain\Puertos\AlmacenPrivado;
 
-
 final class AlmacenPrivadoStorage implements AlmacenPrivado
 {
     public function guardar(string $ruta, string $contenido): void

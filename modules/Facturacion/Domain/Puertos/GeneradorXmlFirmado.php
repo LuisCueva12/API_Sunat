@@ -8,7 +8,6 @@ use Modules\Facturacion\Domain\Comprobante\Comprobante;
 use Modules\Facturacion\Domain\Empresa\DatosEmisor;
 use Modules\Facturacion\Domain\ValueObjects\CertificadoDigital;
 
-
 interface GeneradorXmlFirmado
 {
     public function generar(

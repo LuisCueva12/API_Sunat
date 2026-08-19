@@ -10,7 +10,6 @@ use Modules\Facturacion\Domain\Comprobante\Tributo;
 use Modules\Facturacion\Domain\Excepciones\ComprobanteInvalidoException;
 use Modules\Facturacion\Domain\ValueObjects\Dinero;
 
-
 final class CalculadorTributos
 {
     private const TASA_IGV = 0.18;

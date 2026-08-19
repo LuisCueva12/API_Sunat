@@ -15,7 +15,6 @@ use Modules\Facturacion\Domain\ValueObjects\CertificadoDigital;
 use Modules\Facturacion\Domain\ValueObjects\Ruc;
 use Modules\Facturacion\Infrastructure\Sunat\Greenter\ConfiguracionSunat;
 
-
 final class ProveedorDatosSunatEloquent implements ProveedorDatosSunat
 {
     public function paraEmpresa(string $empresaId, string $entorno): DatosSunatEmpresa

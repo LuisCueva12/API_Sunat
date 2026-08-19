@@ -10,7 +10,6 @@ final class Serie
 {
     private readonly string $valor;
 
-
     public function __construct(string $valor)
     {
         $valor = strtoupper(trim($valor));

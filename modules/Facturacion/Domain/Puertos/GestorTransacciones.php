@@ -6,7 +6,6 @@ namespace Modules\Facturacion\Domain\Puertos;
 
 use Closure;
 
-
 interface GestorTransacciones
 {
     /**

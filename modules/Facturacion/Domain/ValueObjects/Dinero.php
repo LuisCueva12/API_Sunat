@@ -6,7 +6,6 @@ namespace Modules\Facturacion\Domain\ValueObjects;
 
 use InvalidArgumentException;
 
-
 final class Dinero
 {
     private function __construct(private readonly int $centavos) {}
@@ -20,7 +19,6 @@ final class Dinero
     {
         return new self(0);
     }
-
 
     public static function desde(string $monto): self
     {
@@ -47,7 +45,6 @@ final class Dinero
     {
         return new self($this->centavos - $otro->centavos);
     }
-
 
     public function multiplicarPor(float $factor): self
     {

@@ -6,7 +6,6 @@ namespace Modules\Facturacion\Domain\Puertos;
 
 use Modules\Facturacion\Domain\Empresa\DatosSunatEmpresa;
 
-
 interface FabricaEnviadorComprobante
 {
     public function crear(DatosSunatEmpresa $datosSunat): EnviadorComprobanteElectronico;

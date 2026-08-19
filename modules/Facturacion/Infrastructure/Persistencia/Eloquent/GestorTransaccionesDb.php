@@ -10,7 +10,6 @@ use Modules\Facturacion\Domain\Puertos\GestorTransacciones;
 
 final class GestorTransaccionesDb implements GestorTransacciones
 {
-
     public function ejecutar(Closure $operacion): mixed
     {
         return DB::transaction($operacion);

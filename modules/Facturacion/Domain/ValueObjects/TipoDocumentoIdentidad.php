@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Modules\Facturacion\Domain\ValueObjects;
 
-
 enum TipoDocumentoIdentidad: string
 {
     case SinDocumento = '0';

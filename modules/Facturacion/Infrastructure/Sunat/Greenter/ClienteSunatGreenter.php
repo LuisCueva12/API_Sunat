@@ -11,7 +11,6 @@ use Modules\Facturacion\Domain\Comprobante\ResultadoEnvio;
 use Modules\Facturacion\Domain\Puertos\EnviadorComprobanteElectronico;
 use Throwable;
 
-
 final class ClienteSunatGreenter implements EnviadorComprobanteElectronico
 {
     public function __construct(

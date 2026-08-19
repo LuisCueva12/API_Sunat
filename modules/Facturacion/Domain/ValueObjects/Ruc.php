@@ -29,7 +29,6 @@ final class Ruc
         $this->valor = $valor;
     }
 
-
     private static function digitoVerificadorValido(string $ruc): bool
     {
         $factores = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2];
