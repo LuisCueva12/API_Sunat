@@ -30,9 +30,7 @@
         <env name="DB_HOST" value="127.0.0.1"/>
         <env name="DB_PORT" value="5432"/>
         <env name="DB_DATABASE" value="facturacion_test"/>
-        <env name="DB_USERNAME" value="facturacion"/>
-        <!-- DB_PASSWORD deliberadamente NO está aquí (este archivo se versiona).
-             Vive en .env.testing, ignorado por git. -->
+        <!-- DB_USERNAME y DB_PASSWORD viven en .env.testing, ignorado por git. -->
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>

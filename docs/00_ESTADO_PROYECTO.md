@@ -16,8 +16,8 @@ Formato: la sección **Snapshot actual** siempre refleja el estado real del repo
 - Suite completa verificada con PostgreSQL 18, Redis 7 y `ext-soap`: **117 tests, 268 assertions, 0 fallos, 0 omitidos**. Incluye Unit, Integration, Feature y concurrencia real de correlativos.
 
 **Entorno local**:
-- El bloqueo de validación quedó resuelto mediante servicios y extensiones cargados en un runtime aislado: PostgreSQL en `127.0.0.1:55432`, Redis en `127.0.0.1:56379` y módulos PHP extraídos en `/tmp`. Es evidencia de compatibilidad, no configuración persistente del host.
-- Para dejarlo permanente tras reiniciar hace falta privilegio administrativo: instalar `php8.5-soap`, `php8.5-redis` y `redis-server`, y configurar el rol/base PostgreSQL según `.env.testing`.
+- PostgreSQL 18 y Redis 7 operan como servicios permanentes en `127.0.0.1:5432` y `127.0.0.1:6379`. PHP carga permanentemente `ext-soap`, `ext-redis` e `igbinary`.
+- Las bases `facturacion` y `facturacion_test` están configuradas mediante `.env` y `.env.testing`, ambos ignorados por Git. El runtime aislado de `/tmp` fue migrado, verificado y eliminado.
 
 **Gaps documentados explícitamente (no resueltos, no inventados)**:
 - `AnalizadorCertificadoDigital` no verifica que el RUC del certificado coincida con el RUC de la empresa (falta la fuente oficial del campo/OID exacto) — ver `docs/05_SUNAT.md`.
@@ -28,6 +28,10 @@ Formato: la sección **Snapshot actual** siempre refleja el estado real del repo
 2. Resolver las reglas tributarias pendientes de `docs/05_SUNAT.md` antes de promover cada tipo de comprobante a producción.
 
 ## Registro
+
+### 2026-08-19 — Entorno local permanente sin runtime temporal
+**Hecho**: se instalaron Redis y las extensiones PHP SOAP/Redis/igbinary como paquetes del sistema. La base BETA completa se migró desde PostgreSQL temporal al servicio permanente, preservando las dos facturas y sus CDR. PostgreSQL y Redis temporales se apagaron y `/tmp/api_facturacion_beta_runtime` se eliminó. PHPUnit dejó de fijar un usuario de base versionado y toma usuario/contraseña desde `.env.testing`. La suite pasó nuevamente con servicios permanentes: 117 tests y 268 assertions.
+**Sigue**: no queda infraestructura temporal de este hito; usar los puertos estándar definidos en los archivos de entorno locales.
 
 ### 2026-08-19 — Hito SUNAT BETA completado con CDR aceptado
 **Hecho**: se ejecutó el flujo real API → Redis → worker → XML UBL 2.1 firmado → SOAP SUNAT BETA → CDR. La factura `F001-2` fue `ACEPTADO` sin observaciones y se persistieron los hashes SHA-256 del XML y CDR. Las respuestas previas de BETA revelaron requisitos que faltaban en el XML: código de local, tipo de operación, forma de pago `Contado` y nombres de departamento/provincia/distrito. El generador ahora incorpora `ProfileID` oficial sin depender de `Greenter\See` para la firma offline; el envío conserva `ext-soap`. Un reintento exitoso también limpia `ultimo_error`. Suite final: 117 tests, 268 assertions, PHPStan sin errores, Pint aprobado y Deptrac con 0 violaciones.
