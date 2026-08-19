@@ -37,7 +37,7 @@ final class RespuestaApi
     private static function requestId(): string
     {
         /** @var Request|null $request */
-        $request = app()->bound('request') ? app('request') : null;
+        $request = app()->bound(Request::class) ? app(Request::class) : null;
 
         return $request?->attributes->get('request_id') ?? 'sin-request-id';
     }
