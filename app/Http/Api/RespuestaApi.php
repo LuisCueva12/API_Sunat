@@ -7,11 +7,6 @@ namespace App\Http\Api;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-/**
- * Formato de respuesta único para toda la API v1 — ver docs/04_API.md.
- * Nunca se devuelve una excepción interna ni un stack trace: siempre pasa
- * por aquí o por el exception handler (bootstrap/app.php).
- */
 final class RespuestaApi
 {
     /**
