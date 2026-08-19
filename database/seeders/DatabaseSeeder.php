@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
-use App\Models\Usuario;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -14,9 +13,17 @@ class DatabaseSeeder extends Seeder
 
     public function run(): void
     {
-        Usuario::factory()->create([
-            'name' => 'Usuario de prueba',
-            'email' => 'test@example.com',
+        if (! app()->environment('local')) {
+            $this->command?->warn(
+                'Seeders de usuarios de prueba omitidos: solo corren en entorno local.',
+            );
+
+            return;
+        }
+
+        $this->call([
+            AdminUsuarioSeeder::class,
+            ClienteUsuarioSeeder::class,
         ]);
     }
 }

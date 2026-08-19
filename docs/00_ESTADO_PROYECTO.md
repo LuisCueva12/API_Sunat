@@ -20,6 +20,7 @@ Formato: la sección **Snapshot actual** siempre refleja el estado real del repo
 **Entorno local**:
 - PostgreSQL 18 y Redis 7 operan como servicios permanentes en `127.0.0.1:5432` y `127.0.0.1:6379`. PHP carga permanentemente `ext-soap`, `ext-redis` e `igbinary`.
 - Las bases `facturacion` y `facturacion_test` están configuradas mediante `.env` y `.env.testing`, ambos ignorados por Git. El runtime aislado de `/tmp` fue migrado, verificado y eliminado.
+- `php artisan db:seed` crea usuarios de prueba para los dos paneles (`AdminUsuarioSeeder`, `ClienteUsuarioSeeder`) — `admin@local.test` / `Admin123!Local` para `/admin`, `cliente@local.test` / `Cliente123!Local` para `/app` (empresa RUC `20100070970`, creada si no existe). Ambos seeders se cortan solos si `APP_ENV` no es `local` (guard propio en cada uno, no solo en `DatabaseSeeder`) — nunca crean estas credenciales conocidas fuera de desarrollo. Idempotentes: correr `db:seed` de nuevo no duplica nada.
 
 **Gaps documentados explícitamente (no resueltos, no inventados)**:
 - `AnalizadorCertificadoDigital` no verifica que el RUC del certificado coincida con el RUC de la empresa (falta la fuente oficial del campo/OID exacto) — ver `docs/05_SUNAT.md`.
