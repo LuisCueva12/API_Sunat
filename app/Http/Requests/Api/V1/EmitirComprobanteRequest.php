@@ -31,7 +31,7 @@ class EmitirComprobanteRequest extends FormRequest
             'serie' => ['required', 'string', 'size:4'],
             'receptor_tipo_documento' => ['required', 'string', Rule::in(['0', '1', '4', '6', '7'])],
             'receptor_numero_documento' => ['required_unless:receptor_tipo_documento,0', 'nullable', 'string', 'max:15'],
-            'receptor_razon_social' => ['required', 'string', 'max:255'],
+            'receptor_razon_social' => ['nullable', 'string', 'max:255'],
             'moneda' => ['sometimes', 'string', Rule::in(['PEN', 'USD'])],
             'items' => ['required', 'array', 'min:1'],
             'items.*.descripcion' => ['required', 'string', 'max:500'],

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Jobs\ProcesarComprobante;
+use App\Models\Cliente as ClienteEloquent;
 use App\Models\Comprobante as ComprobanteEloquent;
 use App\Models\Empresa as EmpresaEloquent;
 use Illuminate\Support\Facades\Cache;
@@ -223,6 +224,40 @@ it('rechaza reusar una Idempotency-Key con una solicitud distinta', function () 
     $this->withHeaders($headers)->postJson('/api/v1/facturas', $payloadDistinto)
         ->assertStatus(422)
         ->assertJsonPath('error.codigo', 'IDEMPOTENCY_KEY_CONFLICTO');
+});
+
+it('resuelve receptor_razon_social del maestro de Clientes cuando no se envía', function () {
+    [$empresa] = crearEmpresaConIntegracion();
+    crearSerieFactura($empresa->id);
+
+    ClienteEloquent::query()->create([
+        'empresa_id' => $empresa->id,
+        'tipo_documento' => '6',
+        'numero_documento' => '20100070970',
+        'razon_social' => 'Cliente Registrado SAC',
+    ]);
+
+    $payload = payloadFacturaValida();
+    unset($payload['receptor_razon_social']);
+
+    $this->postJson('/api/v1/facturas', $payload)->assertStatus(202);
+
+    $comprobante = ComprobanteEloquent::query()->firstOrFail();
+    expect($comprobante->receptor_razon_social)->toBe('Cliente Registrado SAC');
+});
+
+it('rechaza con 422 si no envía receptor_razon_social y no hay cliente registrado con ese documento', function () {
+    [$empresa] = crearEmpresaConIntegracion();
+    crearSerieFactura($empresa->id);
+
+    $payload = payloadFacturaValida();
+    unset($payload['receptor_razon_social']);
+
+    $this->postJson('/api/v1/facturas', $payload)
+        ->assertStatus(422)
+        ->assertJsonPath('error.codigo', 'COMPROBANTE_INVALIDO');
+
+    expect(ComprobanteEloquent::query()->count())->toBe(0);
 });
 
 it('nunca permite que una empresa consulte el comprobante de otra', function () {

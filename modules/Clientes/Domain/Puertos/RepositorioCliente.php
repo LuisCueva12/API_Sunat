@@ -13,5 +13,7 @@ interface RepositorioCliente
 
     public function buscarPorId(string $empresaId, string $id): ?Cliente;
 
+    public function buscarPorDocumento(string $empresaId, TipoDocumentoCliente $tipoDocumento, string $numeroDocumento): ?Cliente;
+
     public function existe(string $empresaId, TipoDocumentoCliente $tipoDocumento, string $numeroDocumento): bool;
 }

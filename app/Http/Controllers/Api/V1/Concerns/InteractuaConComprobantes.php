@@ -21,7 +21,7 @@ trait InteractuaConComprobantes
             serie: $validado['serie'],
             receptorTipoDocumento: $validado['receptor_tipo_documento'],
             receptorNumeroDocumento: $validado['receptor_numero_documento'] ?? '',
-            receptorRazonSocial: $validado['receptor_razon_social'],
+            receptorRazonSocial: $validado['receptor_razon_social'] ?? null,
             items: array_map(
                 fn (array $item) => new ItemInput(
                     descripcion: $item['descripcion'],

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\Cliente as ClienteEloquent;
 use App\Models\Comprobante as ComprobanteEloquent;
 use App\Models\Empresa as EmpresaEloquent;
 use Illuminate\Support\Facades\DB;
@@ -91,6 +92,53 @@ it('asigna correlativos consecutivos entre emisiones sucesivas', function () {
 
     expect($primero->numero()->correlativo())->toBe(1)
         ->and($segundo->numero()->correlativo())->toBe(2);
+});
+
+it('resuelve la razón social del receptor desde el cliente registrado si no se envía', function () {
+    ClienteEloquent::query()->create([
+        'empresa_id' => $this->empresa->id,
+        'tipo_documento' => '6',
+        'numero_documento' => '20100070970',
+        'razon_social' => 'Cliente Registrado SAC',
+    ]);
+
+    $casoDeUso = app(EmitirFactura::class);
+
+    $comprobante = $casoDeUso->ejecutar(new EmitirComprobanteInput(
+        empresaId: $this->empresa->id,
+        serie: 'F001',
+        receptorTipoDocumento: '6',
+        receptorNumeroDocumento: '20100070970',
+        receptorRazonSocial: null,
+        items: [new ItemInput('Item', 'NIU', 1.0, '10.00', '10')],
+    ));
+
+    expect($comprobante->receptorRazonSocial())->toBe('Cliente Registrado SAC');
+});
+
+it('no resuelve la razón social de un cliente registrado en otra empresa', function () {
+    $otraEmpresa = EmpresaEloquent::create([
+        'ruc' => '20100070971',
+        'razon_social' => 'Otra Empresa SAC',
+        'estado' => 'ACTIVA',
+    ]);
+    ClienteEloquent::query()->create([
+        'empresa_id' => $otraEmpresa->id,
+        'tipo_documento' => '6',
+        'numero_documento' => '20100070970',
+        'razon_social' => 'Cliente De Otra Empresa SAC',
+    ]);
+
+    $casoDeUso = app(EmitirFactura::class);
+
+    expect(fn () => $casoDeUso->ejecutar(new EmitirComprobanteInput(
+        empresaId: $this->empresa->id,
+        serie: 'F001',
+        receptorTipoDocumento: '6',
+        receptorNumeroDocumento: '20100070970',
+        receptorRazonSocial: null,
+        items: [new ItemInput('Item', 'NIU', 1.0, '10.00', '10')],
+    )))->toThrow(ComprobanteInvalidoException::class);
 });
 
 it('revierte la asignación del correlativo si la validación falla', function () {

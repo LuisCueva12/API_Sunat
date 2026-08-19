@@ -14,7 +14,7 @@ final class EmitirComprobanteInput
         public readonly string $serie,
         public readonly string $receptorTipoDocumento,
         public readonly string $receptorNumeroDocumento,
-        public readonly string $receptorRazonSocial,
+        public readonly ?string $receptorRazonSocial,
         public readonly array $items,
         public readonly string $moneda = 'PEN',
 

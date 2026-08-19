@@ -28,6 +28,11 @@ function repositorioClienteConRegistro(?Cliente $cliente): RepositorioCliente
             return $this->cliente;
         }
 
+        public function buscarPorDocumento(string $empresaId, TipoDocumentoCliente $tipoDocumento, string $numeroDocumento): ?Cliente
+        {
+            return null;
+        }
+
         public function existe(string $empresaId, TipoDocumentoCliente $tipoDocumento, string $numeroDocumento): bool
         {
             return false;

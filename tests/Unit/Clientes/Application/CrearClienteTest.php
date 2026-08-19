@@ -64,6 +64,11 @@ function repositorioClienteFalso(bool $existe = false): RepositorioCliente
             return null;
         }
 
+        public function buscarPorDocumento(string $empresaId, TipoDocumentoCliente $tipoDocumento, string $numeroDocumento): ?Cliente
+        {
+            return null;
+        }
+
         public function existe(string $empresaId, TipoDocumentoCliente $tipoDocumento, string $numeroDocumento): bool
         {
             return $this->existe;

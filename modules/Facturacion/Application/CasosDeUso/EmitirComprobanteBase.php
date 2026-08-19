@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace Modules\Facturacion\Application\CasosDeUso;
 
 use DateTimeImmutable;
+use Modules\Clientes\Domain\Puertos\RepositorioCliente;
+use Modules\Clientes\Domain\TipoDocumentoCliente;
 use Modules\Facturacion\Application\DTO\EmitirComprobanteInput;
 use Modules\Facturacion\Domain\Comprobante\Comprobante;
 use Modules\Facturacion\Domain\Comprobante\ReferenciaComprobante;
 use Modules\Facturacion\Domain\Comprobante\TipoComprobante;
+use Modules\Facturacion\Domain\Excepciones\ComprobanteInvalidoException;
 use Modules\Facturacion\Domain\Puertos\AsignadorCorrelativo;
 use Modules\Facturacion\Domain\Puertos\DespachadorProcesamiento;
 use Modules\Facturacion\Domain\Puertos\GeneradorId;
@@ -32,6 +35,7 @@ abstract class EmitirComprobanteBase
         private readonly CalculadorTributos $calculadorTributos,
         private readonly ValidadorComprobante $validador,
         private readonly DespachadorProcesamiento $despachador,
+        private readonly RepositorioCliente $repositorioCliente,
     ) {}
 
     abstract protected function tipo(): TipoComprobante;
@@ -72,7 +76,7 @@ abstract class EmitirComprobanteBase
                     TipoDocumentoIdentidad::from($input->receptorTipoDocumento),
                     $input->receptorNumeroDocumento,
                 ),
-                receptorRazonSocial: $input->receptorRazonSocial,
+                receptorRazonSocial: $this->resolverRazonSocial($input),
                 fechaEmision: new DateTimeImmutable('now'),
                 referencia: $this->construirReferencia($input),
             );
@@ -101,6 +105,27 @@ abstract class EmitirComprobanteBase
         );
 
         return $comprobante;
+    }
+
+    private function resolverRazonSocial(EmitirComprobanteInput $input): string
+    {
+        if ($input->receptorRazonSocial !== null && trim($input->receptorRazonSocial) !== '') {
+            return trim($input->receptorRazonSocial);
+        }
+
+        $cliente = $this->repositorioCliente->buscarPorDocumento(
+            $input->empresaId,
+            TipoDocumentoCliente::from($input->receptorTipoDocumento),
+            $input->receptorNumeroDocumento,
+        );
+
+        if ($cliente === null) {
+            throw new ComprobanteInvalidoException(
+                'No se indicó receptor_razon_social y no existe un cliente registrado con ese documento en esta empresa.',
+            );
+        }
+
+        return $cliente->razonSocial();
     }
 
     private function construirReferencia(EmitirComprobanteInput $input): ?ReferenciaComprobante

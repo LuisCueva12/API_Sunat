@@ -40,6 +40,21 @@ final class RepositorioClienteEloquent implements RepositorioCliente
         return $this->aDominio($fila);
     }
 
+    public function buscarPorDocumento(string $empresaId, TipoDocumentoCliente $tipoDocumento, string $numeroDocumento): ?Cliente
+    {
+        $fila = ClienteEloquent::query()
+            ->where('empresa_id', $empresaId)
+            ->where('tipo_documento', $tipoDocumento->value)
+            ->where('numero_documento', $numeroDocumento)
+            ->first();
+
+        if ($fila === null) {
+            return null;
+        }
+
+        return $this->aDominio($fila);
+    }
+
     public function existe(string $empresaId, TipoDocumentoCliente $tipoDocumento, string $numeroDocumento): bool
     {
         return ClienteEloquent::query()
