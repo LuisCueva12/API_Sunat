@@ -26,9 +26,11 @@ class Usuario extends Authenticatable implements FilamentUser
 
     public function canAccessPanel(Panel $panel): bool
     {
-        return $panel->getId() === 'admin'
-            && $this->empresa_id === null
-            && $this->hasRole('super_admin');
+        return match ($panel->getId()) {
+            'admin' => $this->empresa_id === null && $this->hasRole('super_admin'),
+            'empresa' => $this->empresa_id !== null,
+            default => false,
+        };
     }
 
     /**

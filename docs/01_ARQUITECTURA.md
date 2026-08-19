@@ -65,7 +65,7 @@ seleccionados por factory según `tipo`.
 6. **Webhooks** — configuración, firma HMAC, entrega, reintentos.
 7. **Identidad/Seguridad** — usuarios panel, integraciones API (Passport/OAuth2), autenticación/autorización.
 8. **Auditoría** — transversal.
-9. **Panel Administrativo** (Interfaces) — Filament sobre los mismos casos de uso.
+9. **Paneles Filament** (Interfaces) — `/admin` (interno, staff) y `/app` (self-service por empresa, implementado 2026-08-19 — ver §14), ambos sobre los mismos casos de uso.
 10. **API Pública** (Interfaces) — controladores v1, FormRequests, API Resources, OpenAPI.
 11. **Clientes** — módulo nuevo, planeado (ver §14): entidad `Cliente` por empresa, autocompleta el receptor al emitir. No reemplaza el snapshot desnormalizado en `comprobantes.receptor_*`.
 12. **Integraciones** — envuelve Passport (implementado 2026-08-19): `IntegracionApi` con metadata de negocio (nombre, scopes, último uso) sobre el `oauth_client` nativo. Ver §14.
@@ -201,7 +201,7 @@ Guías de remisión, detracciones, retenciones, percepciones, documentos especia
 | 1 | Boletas se envían individualmente (`sendBill`), no por resumen diario consolidado | Pipeline de Boleta en Fase 5 |
 | 2 | Modelo SEE - Del Contribuyente confirmado (no OSE) | Todo el diseño de credenciales/certificados |
 
-**Resuelta 2026-08-19** (ver §14): el panel V1 deja de ser exclusivamente interno — se confirma un segundo panel self-service por empresa (`/app`), además del interno (`/admin`). Impacta el modelo de autorización de `usuarios` (roles `empresa_admin`/`facturador`/`contador`/`empleado`, `empresa_id` obligatorio para esos roles) — todavía no construido, ver §14 para el roadmap.
+**Resuelta e implementada 2026-08-19** (ver §14): el panel V1 deja de ser exclusivamente interno — segundo panel self-service por empresa (`/app`) construido y verificado en vivo (aislamiento multiempresa real, no solo visual), además del interno (`/admin`). Los roles granulares dentro de una empresa (`empresa_admin`/`facturador`/`contador`/`empleado`) siguen pendientes — hoy cualquier usuario con `empresa_id` accede a todo lo de su empresa, ver §14 para el roadmap.
 
 ## 13. Riesgos abiertos a verificar antes de cada fase relevante
 
@@ -219,10 +219,11 @@ Decisión explícita del usuario: el producto deja de ser solo una API interna y
 
 **Implementado:**
 - **Passport/OAuth2** reemplaza por completo el sistema de API Keys propio (`api_keys`, `ApiKeyEmpresa`, `GeneradorClaveApi` — eliminados, no coexisten). Grant `client_credentials` (único habilitado, es el correcto para integraciones máquina-a-máquina sin usuario delegando). `IntegracionApi` (Domain) es metadata de negocio sobre el `oauth_client` nativo de Passport (`owner_type`/`owner_id` → `Empresa`, columna propia `scopes` para restringir por integración, columna propia `ultimo_uso_at`). Ver [02_DOMINIO.md](02_DOMINIO.md), [03_BASE_DATOS.md](03_BASE_DATOS.md) y [06_SEGURIDAD.md](06_SEGURIDAD.md) para el detalle. Verificado en vivo contra SUNAT BETA: token real vía `POST /oauth/token`, factura `ACEPTADO`, y revocación inmediata confirmada (token previamente válido devuelve 401 antes de su expiración natural).
+- **Panel `/app` self-service por empresa**: `EmpresaPanelProvider` (Filament, panel id `empresa`), guard `web` compartido con `/admin` pero autorización distinta — `Usuario::canAccessPanel()` exige `empresa_id !== null` para `/app` (vs. `empresa_id === null` + rol `super_admin` para `/admin`; nunca los dos panels a la vez para un mismo usuario). Sin roles granulares todavía (`facturador`/`contador`/etc. quedan para cuando haya una necesidad real de diferenciarlos — no antes). Primer recurso: `Comprobantes` (solo lectura + reintentar, igual UX que `/admin` pero sin columna/filtro de Empresa — no tiene sentido para un tenant que solo ve lo suyo). El aislamiento **no es un filtro visual**: `ComprobanteResource::getEloquentQuery()` fuerza `where('empresa_id', $usuario->empresa_id)` en cada consulta — verificado en vivo que una empresa no ve el comprobante de otra ni en el listado ni por URL directa (404, no solo oculto). Lógica de formato/acciones (`ComprobanteFormato`, `ComprobanteAcciones`, `ComprobanteInfolist` en `app/Filament/Support/`) compartida entre `/admin` y `/app` sin duplicar código, tal como pide la filosofía de este documento.
 
 **Pendiente (roadmap, en orden razonable — no construir todo de una vez):**
 1. Módulo **Clientes** (`modules/Clientes/{Domain,Application,Infrastructure}`, nuevo módulo top-level — a diferencia de `Empresa`, que se queda dentro de `Facturacion` por estar acoplado a configuración tributaria específica). CRUD simple, autocompleta el receptor al emitir sin reemplazar el snapshot desnormalizado de `comprobantes.receptor_*`.
-2. **Panel `/app`** self-service por empresa: guard de autenticación propio, `EmpresaPanelProvider` (Filament) separado de `AdminPanelProvider`, roles Spatie nuevos (`empresa_admin`/`facturador`/`contador`/`empleado`) con `empresa_id` obligatorio (a diferencia de `super_admin`, que exige `empresa_id` nulo). Mismos `Resources`/casos de uso que `/admin`, pero con la consulta forzada por Policy a la empresa del usuario autenticado — nunca un filtro solo visual.
+2. Roles granulares dentro de una empresa (`facturador`/`contador`/`empleado`/`empresa_admin`) cuando haya una necesidad real de diferenciar permisos — hoy cualquier usuario con `empresa_id` ve todo lo de su empresa en `/app`.
 3. Escritor de auditoría (la tabla `auditorias` ya tiene el esquema correcto — usuario/integración/empresa/acción/entidad/ip/request_id/datos previos-nuevos — pero ningún caso de uso escribe ahí todavía).
 4. Envelope de respuesta API: agregar campo `"success": true/false` (hoy es `{"data"/"error", "meta"}` sin ese campo) — cambio de contrato aceptable ahora porque todavía no hay integraciones reales en producción.
 5. Rate limiting diferenciado por tipo de endpoint (login, emisión de token, emisión de comprobante, consulta) — hoy es un único límite genérico de 60/min por IP.

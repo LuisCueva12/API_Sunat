@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Filament\Admin\Resources\Comprobantes\Pages;
+namespace App\Filament\Empresa\Resources\Comprobantes\Pages;
 
-use App\Filament\Admin\Resources\Comprobantes\ComprobanteResource;
+use App\Filament\Empresa\Resources\Comprobantes\ComprobanteResource;
 use App\Filament\Support\ComprobanteAcciones;
 use App\Filament\Support\ComprobanteInfolist;
 use Filament\Resources\Pages\ViewRecord;

@@ -2,20 +2,23 @@
 
 declare(strict_types=1);
 
-namespace App\Filament\Admin\Resources\Comprobantes;
+namespace App\Filament\Empresa\Resources\Comprobantes;
 
-use App\Filament\Admin\Resources\Comprobantes\Pages\ListComprobantes;
-use App\Filament\Admin\Resources\Comprobantes\Pages\ViewComprobante;
+use App\Filament\Empresa\Resources\Comprobantes\Pages\ListComprobantes;
+use App\Filament\Empresa\Resources\Comprobantes\Pages\ViewComprobante;
 use App\Filament\Support\ComprobanteAcciones;
 use App\Filament\Support\ComprobanteFormato;
 use App\Models\Comprobante;
+use App\Models\Usuario;
 use BackedEnum;
 use Filament\Actions\ViewAction;
+use Filament\Facades\Filament;
 use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 final class ComprobanteResource extends Resource
 {
@@ -29,27 +32,35 @@ final class ComprobanteResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'serie';
 
-    protected static ?int $navigationSort = 4;
-
     public static function canCreate(): bool
     {
         return false;
+    }
+
+    /**
+     * Defensa en profundidad: el listado nunca depende solo del filtro visual
+     * de Filament — la query siempre está forzada a la empresa del usuario
+     * autenticado, sin importar qué parámetros lleguen por la URL.
+     */
+    public static function getEloquentQuery(): Builder
+    {
+        /** @var Usuario $usuario */
+        $usuario = Filament::auth()->user();
+
+        return parent::getEloquentQuery()->where('empresa_id', $usuario->empresa_id);
     }
 
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
-                TextColumn::make('empresa.razon_social')->label('Empresa')->searchable()->sortable(),
                 TextColumn::make('tipo')->label('Tipo')->badge()->formatStateUsing(fn (string $state): string => ComprobanteFormato::etiquetaTipo($state))->sortable(),
                 TextColumn::make('serie')->sortable()->searchable(),
                 TextColumn::make('correlativo')->sortable()->searchable(),
                 TextColumn::make('receptor_razon_social')->label('Receptor')->searchable()->toggleable(),
                 TextColumn::make('total')->money('PEN')->sortable(),
                 TextColumn::make('estado')->badge()->color(fn (string $state): string => ComprobanteFormato::colorEstado($state))->formatStateUsing(fn (string $state): string => ComprobanteFormato::etiquetaEstado($state))->sortable(),
-                TextColumn::make('intentos_envio')->label('Intentos')->sortable()->toggleable(),
                 TextColumn::make('fecha_emision')->date()->sortable(),
-                TextColumn::make('created_at')->label('Registrado')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 SelectFilter::make('estado')->options([
@@ -66,11 +77,6 @@ final class ComprobanteResource extends Resource
                     'NOTA_CREDITO' => 'Nota de crédito',
                     'NOTA_DEBITO' => 'Nota de débito',
                 ]),
-                SelectFilter::make('empresa_id')
-                    ->label('Empresa')
-                    ->relationship('empresa', 'razon_social')
-                    ->searchable()
-                    ->preload(),
             ])
             ->recordActions([
                 ViewAction::make(),

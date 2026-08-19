@@ -19,11 +19,12 @@ Decisiones fijadas desde Fase 0-1 (detalle operativo se completa en Fase 6-9):
 - Este puerto reemplaza la implementación propia de API Keys que existió hasta 2026-08-19 (`GeneradorClaveApi`/`ApiKeyEmpresa`, tabla `api_keys`) — se migró a Passport/OAuth2 antes de tener integraciones reales en producción, ver Fase 1 de [01_ARQUITECTURA.md](01_ARQUITECTURA.md) para el razonamiento completo.
 - **Altas administrativas separadas de la API pública**: `CrearEmpresa` y `CrearSerie` ya se invocan desde el panel interno `/admin`; certificados, credenciales e integraciones API siguen disponibles solo mediante comandos/casos de uso hasta contar con formularios que protejan correctamente sus secretos. Ninguna de estas altas se expone en `routes/api_v1.php`.
 
-## Panel interno
+## Panel interno (`/admin`) y panel de empresa (`/app`)
 
-- No existe registro público. El primer operador se crea con `php artisan facturacion:crear-admin correo@dominio --name="Nombre"`; la contraseña se solicita dos veces y nunca viaja como argumento ni queda en el historial del shell.
-- `Usuario::canAccessPanel()` exige panel `admin`, rol `super_admin` y `empresa_id` nulo. Un usuario asociado a una empresa no obtiene acceso cross-tenant aunque se le asigne el rol por error.
+- No existe registro público en ninguno de los dos. El primer operador de `/admin` se crea con `php artisan facturacion:crear-admin correo@dominio --name="Nombre"`; la contraseña se solicita dos veces y nunca viaja como argumento ni queda en el historial del shell. Usuarios de `/app` se crean con `empresa_id` asignado (todavía por comando/tinker, sin flujo de invitación).
+- `Usuario::canAccessPanel()` decide por `$panel->getId()`: `admin` exige rol `super_admin` y `empresa_id` nulo; `empresa` exige `empresa_id` no nulo. Son mutuamente excluyentes por diseño — un usuario nunca tiene acceso a los dos paneles. Un usuario asociado a una empresa no obtiene acceso cross-tenant a `/admin` aunque se le asigne el rol por error.
+- El aislamiento de `/app` no depende de un filtro visual: `ComprobanteResource::getEloquentQuery()` (panel Empresa) fuerza `where('empresa_id', ...)` sobre la query base — verificado en vivo que una empresa no ve el comprobante de otra ni en el listado ni por URL directa al registro (404).
 - Las tablas RBAC de Spatie usan UUID para `model_id`, igual que `usuarios.id`.
-- Empresas, establecimientos y series no se eliminan desde el panel. RUC, empresa/código de establecimiento e identidad de la serie quedan inmutables después del alta.
+- Empresas, establecimientos y series no se eliminan desde ningún panel. RUC, empresa/código de establecimiento e identidad de la serie quedan inmutables después del alta.
 
 Checklist de auditoría, rotación de secretos y runbook de incidentes se documentan en detalle en Fase 6-9, una vez implementados (evitar documentar procesos que todavía no existen).
