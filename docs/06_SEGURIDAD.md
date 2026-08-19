@@ -17,6 +17,13 @@ Decisiones fijadas desde Fase 0-1 (detalle operativo se completa en Fase 6-9):
 - **Credencial SUNAT**: única por (empresa, entorno) — a diferencia del certificado, aquí la rotación es la operación normal (Clave SOL cambia periódicamente), así que `CrearCredencialSunat` actualiza la fila existente en vez de crear una nueva cada vez que se registra una credencial para un entorno ya configurado.
 - **API Key**: `GeneradorClaveApi` (puerto, implementado por `GeneradorClaveApiSegura` en Infrastructure) genera 32 caracteres vía `random_bytes` con prefijo `fe_live_`. `CrearApiKey` valida que los scopes solicitados existan en `ApiKeyEmpresa::ESCOPOS_VALIDOS` (rechaza scopes desconocidos, no los ignora en silencio) y devuelve la clave completa en texto plano **una única vez**, dentro de `ResultadoCrearApiKey` — ese objeto es transitorio, no se guarda en ningún log ni tabla; solo el hash SHA-256 llega a persistirse.
 - Esta lógica de generación de clave vivía antes en `app/Services/ApiKeys` (capa `Interfaces`, sin contrato); se migró a un puerto de Domain (`GeneradorClaveApi`) + adaptador de Infrastructure para que `CrearApiKey` (Application) pueda depender de él sin romper la regla de capas de `deptrac` — Application solo puede depender de Domain.
-- **Sin endpoints HTTP públicos todavía**: estas 5 altas (`CrearEmpresa`, `CrearSerie`, `CrearCertificadoDigital`, `CrearCredencialSunat`, `CrearApiKey`) existen como casos de uso completos con tests, pero deliberadamente no están expuestas en `routes/api_v1.php`. Exponer "crear tu primera empresa/API Key" sin autenticación sería un endpoint de alta sin control de acceso — el lugar correcto es un área administrativa autenticada (Fase 8, panel), todavía no construida.
+- **Altas administrativas separadas de la API pública**: `CrearEmpresa` y `CrearSerie` ya se invocan desde el panel interno `/admin`; certificados, credenciales y API Keys siguen disponibles solo mediante comandos/casos de uso hasta contar con formularios que protejan correctamente sus secretos. Ninguna de estas altas se expone en `routes/api_v1.php`.
+
+## Panel interno
+
+- No existe registro público. El primer operador se crea con `php artisan facturacion:crear-admin correo@dominio --name="Nombre"`; la contraseña se solicita dos veces y nunca viaja como argumento ni queda en el historial del shell.
+- `Usuario::canAccessPanel()` exige panel `admin`, rol `super_admin` y `empresa_id` nulo. Un usuario asociado a una empresa no obtiene acceso cross-tenant aunque se le asigne el rol por error.
+- Las tablas RBAC de Spatie usan UUID para `model_id`, igual que `usuarios.id`.
+- Empresas, establecimientos y series no se eliminan desde el panel. RUC, empresa/código de establecimiento e identidad de la serie quedan inmutables después del alta.
 
 Checklist de auditoría, rotación de secretos y runbook de incidentes se documentan en detalle en Fase 6-9, una vez implementados (evitar documentar procesos que todavía no existen).

@@ -44,4 +44,34 @@ class Empresa extends Model
     {
         return $this->hasMany(Comprobante::class);
     }
+
+    /** @return HasMany<Establecimiento, $this> */
+    public function establecimientos(): HasMany
+    {
+        return $this->hasMany(Establecimiento::class);
+    }
+
+    /** @return HasMany<Serie, $this> */
+    public function series(): HasMany
+    {
+        return $this->hasMany(Serie::class);
+    }
+
+    /** @return HasMany<CertificadoDigital, $this> */
+    public function certificados(): HasMany
+    {
+        return $this->hasMany(CertificadoDigital::class);
+    }
+
+    /** @return HasMany<CredencialSunat, $this> */
+    public function credencialesSunat(): HasMany
+    {
+        return $this->hasMany(CredencialSunat::class);
+    }
+
+    /** @return HasMany<ApiKey, $this> */
+    public function apiKeys(): HasMany
+    {
+        return $this->hasMany(ApiKey::class);
+    }
 }

@@ -7,6 +7,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
 /**
@@ -36,5 +37,17 @@ class Serie extends Model
             'correlativo_actual' => 'integer',
             'activa' => 'boolean',
         ];
+    }
+
+    /** @return BelongsTo<Empresa, $this> */
+    public function empresa(): BelongsTo
+    {
+        return $this->belongsTo(Empresa::class);
+    }
+
+    /** @return BelongsTo<Establecimiento, $this> */
+    public function establecimiento(): BelongsTo
+    {
+        return $this->belongsTo(Establecimiento::class);
     }
 }

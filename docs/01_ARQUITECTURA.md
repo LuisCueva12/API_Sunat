@@ -203,6 +203,6 @@ Guías de remisión, detracciones, retenciones, percepciones, documentos especia
 - Contenido exacto del QR en representación impresa (antes de construir el PDF, Fase 5+).
 - Regla de redondeo tributario exacta esperada por SUNAT.
 - Certificado de producción emitido para el RUC del contribuyente — BETA admite el autofirmado generado por `facturacion:preparar-beta`, según el manual oficial de SUNAT.
-- `ext-soap` sigue sin instalarse en este entorno de desarrollo — bloquea cualquier uso de `Greenter\See` (confirmado: incluso `getXmlSigned()` sin enviar nada falla sin esta extensión, por cómo Greenter instancia su cliente SOAP en el constructor). Comando ya entregado al usuario: `sudo apt install php8.5-soap`.
+- `ext-soap`, `ext-redis` e `igbinary` están instalados permanentemente en el entorno de desarrollo; PostgreSQL y Redis operan en los puertos estándar `5432` y `6379`.
 
 Resueltos y ya no son riesgos abiertos (ver [05_SUNAT.md](05_SUNAT.md) para el detalle): nombre/versión de `greenter/greenter`, si requiere `ext-soap`, rangos de código CDR (código `0` = aceptado, con notas = observaciones, ≠0 = rechazado — confirmado por la forma de `CdrResponse`), endpoints beta/producción reales.

@@ -13,7 +13,8 @@ Formato: la sección **Snapshot actual** siempre refleja el estado real del repo
 - Alta de tenant completa: `Empresa`, `SerieEmpresa`, `CertificadoEmpresa`, `CredencialSunatEmpresa`, `ApiKeyEmpresa` — casos de uso `Crear*` con sus repositorios Eloquent, cifrado nativo (`Crypt`/`encrypted`), importación de certificados PEM/P12 y comandos seguros de aprovisionamiento, sin endpoints HTTP expuestos todavía (ver más abajo).
 - Integración Greenter (generación+firma XML UBL, envío SOAP, parseo CDR) — flujo Factura API → XML firmado → SUNAT BETA → CDR confirmado con una factura `ACEPTADO` sin observaciones.
 - Pipeline asíncrono (`ProcesarComprobante` Job + `ProcesarEnvioComprobante`), API HTTP v1 (8 endpoints, auth por API Key, idempotencia, rate limiting y reintento explícito de errores).
-- Suite completa verificada con PostgreSQL 18, Redis 7 y `ext-soap`: **117 tests, 268 assertions, 0 fallos, 0 omitidos**. Incluye Unit, Integration, Feature y concurrencia real de correlativos.
+- Panel interno Filament 5 en `/admin`, cerrado por rol `super_admin` y `empresa_id = null`, con alta/edición de empresas, establecimientos y series. El alta de empresa/serie reutiliza los casos de uso de Application; no hay borrado fiscal desde el panel.
+- Suite completa verificada con PostgreSQL 18, Redis 7 y `ext-soap`: **124 tests, 291 assertions, 0 fallos, 0 omitidos**. Incluye Unit, Integration, Feature, seguridad del panel y concurrencia real de correlativos.
 
 **Entorno local**:
 - PostgreSQL 18 y Redis 7 operan como servicios permanentes en `127.0.0.1:5432` y `127.0.0.1:6379`. PHP carga permanentemente `ext-soap`, `ext-redis` e `igbinary`.
@@ -21,13 +22,17 @@ Formato: la sección **Snapshot actual** siempre refleja el estado real del repo
 
 **Gaps documentados explícitamente (no resueltos, no inventados)**:
 - `AnalizadorCertificadoDigital` no verifica que el RUC del certificado coincida con el RUC de la empresa (falta la fuente oficial del campo/OID exacto) — ver `docs/05_SUNAT.md`.
-- Las altas de empresa/certificado/credencial/API Key no tienen endpoint HTTP: exponerlas sin autenticación de administrador sería un agujero de seguridad. Pendiente de Fase 8 (panel administrativo).
+- Certificados, credenciales SUNAT y API Keys todavía se gestionan por comandos/casos de uso; falta incorporarlos al panel mediante acciones que no expongan secretos persistidos.
 
 **Qué sigue (próximos pasos concretos, en orden razonable)**:
-1. Panel administrativo (Fase 8) — primer lugar razonable para exponer las altas de empresa/certificado/credencial/API Key por HTTP.
+1. Completar Fase 8 en el panel: importación/rotación segura de certificado, credenciales SUNAT y API Keys; después, emisión y consulta de comprobantes.
 2. Resolver las reglas tributarias pendientes de `docs/05_SUNAT.md` antes de promover cada tipo de comprobante a producción.
 
 ## Registro
+
+### 2026-08-19 — Primera vertical del panel administrativo interno
+**Hecho**: se habilitó Filament 5.7 en `/admin` sin registro público. El acceso requiere simultáneamente usuario interno (`empresa_id` nulo) y rol Spatie `super_admin`; se añadieron tablas RBAC compatibles con UUID. `facturacion:crear-admin` crea el primer operador con contraseña oculta y política fuerte. El panel gestiona empresas, establecimientos y series, mantiene un solo establecimiento principal por empresa, impide editar RUC/identidad de series y no ofrece borrado. Las altas de empresa y serie invocan los casos de uso existentes. Pruebas Feature cubren invitado, rol ausente, aislamiento de tenant, acceso autorizado, comando y creación Livewire real. Suite completa: 124 tests y 291 assertions.
+**Sigue**: añadir acciones seguras para certificados, credenciales y API Keys sin mostrar material cifrado ni claves completas después de su creación.
 
 ### 2026-08-19 — Entorno local permanente sin runtime temporal
 **Hecho**: se instalaron Redis y las extensiones PHP SOAP/Redis/igbinary como paquetes del sistema. La base BETA completa se migró desde PostgreSQL temporal al servicio permanente, preservando las dos facturas y sus CDR. PostgreSQL y Redis temporales se apagaron y `/tmp/api_facturacion_beta_runtime` se eliminó. PHPUnit dejó de fijar un usuario de base versionado y toma usuario/contraseña desde `.env.testing`. La suite pasó nuevamente con servicios permanentes: 117 tests y 268 assertions.
