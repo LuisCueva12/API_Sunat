@@ -39,6 +39,7 @@ final class EmpresaResource extends Resource
             Section::make('Datos tributarios')->schema([
                 TextInput::make('ruc')
                     ->label('RUC')
+                    ->validationAttribute('RUC')
                     ->required()
                     ->numeric()
                     ->length(11)

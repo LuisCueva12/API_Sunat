@@ -51,6 +51,8 @@ use Illuminate\Support\Carbon;
  * @property Carbon $updated_at
  * @property Collection<int, ComprobanteItem> $items
  * @property Collection<int, ComprobanteTributo> $tributos
+ * @property Collection<int, EnvioSunat> $enviosSunat
+ * @property Collection<int, EventoComprobante> $eventos
  */
 #[Fillable([
     'id', 'empresa_id', 'tipo', 'serie', 'correlativo', 'estado', 'moneda', 'tipo_cambio',
@@ -110,5 +112,21 @@ class Comprobante extends Model
     public function tributos(): HasMany
     {
         return $this->hasMany(ComprobanteTributo::class);
+    }
+
+    /**
+     * @return HasMany<EnvioSunat, $this>
+     */
+    public function enviosSunat(): HasMany
+    {
+        return $this->hasMany(EnvioSunat::class)->orderByDesc('intento');
+    }
+
+    /**
+     * @return HasMany<EventoComprobante, $this>
+     */
+    public function eventos(): HasMany
+    {
+        return $this->hasMany(EventoComprobante::class)->orderByDesc('created_at');
     }
 }

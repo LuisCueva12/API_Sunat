@@ -13,8 +13,8 @@ Formato: la sección **Snapshot actual** siempre refleja el estado real del repo
 - Alta de tenant completa: `Empresa`, `SerieEmpresa`, `CertificadoEmpresa`, `CredencialSunatEmpresa`, `ApiKeyEmpresa` — casos de uso `Crear*` con sus repositorios Eloquent, cifrado nativo (`Crypt`/`encrypted`), importación de certificados PEM/P12 y comandos seguros de aprovisionamiento, sin endpoints HTTP expuestos todavía (ver más abajo).
 - Integración Greenter (generación+firma XML UBL, envío SOAP, parseo CDR) — flujo Factura API → XML firmado → SUNAT BETA → CDR confirmado con una factura `ACEPTADO` sin observaciones.
 - Pipeline asíncrono (`ProcesarComprobante` Job + `ProcesarEnvioComprobante`), API HTTP v1 (8 endpoints, auth por API Key, idempotencia, rate limiting y reintento explícito de errores).
-- Panel interno Filament 5 en `/admin`, cerrado por rol `super_admin` y `empresa_id = null`, con alta/edición de empresas, establecimientos y series. El alta de empresa/serie reutiliza los casos de uso de Application; no hay borrado fiscal desde el panel.
-- Suite completa verificada con PostgreSQL 18, Redis 7 y `ext-soap`: **124 tests, 291 assertions, 0 fallos, 0 omitidos**. Incluye Unit, Integration, Feature, seguridad del panel y concurrencia real de correlativos.
+- Panel interno Filament 5 en `/admin`, cerrado por rol `super_admin` y `empresa_id = null`, con alta/edición de empresas, establecimientos y series, y listado/detalle de solo lectura de comprobantes (Factura/Boleta/NC/ND) con reintento de envío para los que quedaron en `ERROR`. El alta de empresa/serie reutiliza los casos de uso de Application; no hay borrado fiscal ni emisión manual desde el panel. Las páginas de creación capturan las excepciones de dominio (`DomainException`/`InvalidArgumentException`) y muestran una notificación en vez de un 500 crudo.
+- Suite completa verificada con PostgreSQL 18, Redis 7 y `ext-soap`: **129 tests, 309 assertions, 0 fallos, 0 omitidos**. Incluye Unit, Integration, Feature, seguridad del panel y concurrencia real de correlativos.
 
 **Entorno local**:
 - PostgreSQL 18 y Redis 7 operan como servicios permanentes en `127.0.0.1:5432` y `127.0.0.1:6379`. PHP carga permanentemente `ext-soap`, `ext-redis` e `igbinary`.
@@ -23,12 +23,18 @@ Formato: la sección **Snapshot actual** siempre refleja el estado real del repo
 **Gaps documentados explícitamente (no resueltos, no inventados)**:
 - `AnalizadorCertificadoDigital` no verifica que el RUC del certificado coincida con el RUC de la empresa (falta la fuente oficial del campo/OID exacto) — ver `docs/05_SUNAT.md`.
 - Certificados, credenciales SUNAT y API Keys todavía se gestionan por comandos/casos de uso; falta incorporarlos al panel mediante acciones que no expongan secretos persistidos.
+- Las tablas `envios_sunat` y `eventos_comprobante` existen (migraciones aplicadas, con `Eloquent` `EnvioSunat`/`EventoComprobante` ya creados para el panel) pero ningún caso de uso escribe filas en ellas todavía: están vacías en toda la base. El detalle de comprobante en el panel ya tiene las secciones listas para mostrarlas, solo ocultas mientras no haya datos.
 
 **Qué sigue (próximos pasos concretos, en orden razonable)**:
-1. Completar Fase 8 en el panel: importación/rotación segura de certificado, credenciales SUNAT y API Keys; después, emisión y consulta de comprobantes.
-2. Resolver las reglas tributarias pendientes de `docs/05_SUNAT.md` antes de promover cada tipo de comprobante a producción.
+1. Completar Fase 8 en el panel: importación/rotación segura de certificado, credenciales SUNAT y API Keys.
+2. Registrar los envíos a SUNAT y los eventos del pipeline en `envios_sunat`/`eventos_comprobante` (hoy el pipeline no persiste ahí; ver gap arriba).
+3. Resolver las reglas tributarias pendientes de `docs/05_SUNAT.md` antes de promover cada tipo de comprobante a producción.
 
 ## Registro
+
+### 2026-08-19 — Comprobantes en el panel y fix de excepciones de dominio sin capturar
+**Hecho**: se añadió `ComprobanteResource` (solo lectura) al panel — listado filtrable por empresa/tipo/estado y vista de detalle (datos generales, receptor, totales, ítems, tributos, hashes XML/CDR, y secciones para envíos SUNAT/eventos que se ocultan si no hay filas) con acción "Reintentar" para comprobantes en `ERROR`, reutilizando el caso de uso `ReintentarComprobante` ya existente. Se creó `App\Models\EnvioSunat`/`EventoComprobante` para esas tablas, que hasta ahora no tenían modelo Eloquent. Una revisión manual del panel (creando registros con datos inválidos a propósito) encontró que `CreateEmpresa`/`CreateSerie` llamaban a los casos de uso de Application sin capturar sus excepciones de dominio: un RUC con dígito verificador inválido o una serie duplicada producían un HTTP 500 crudo sin ningún mensaje, porque el manejador de excepciones en `bootstrap/app.php` solo cubre la API (`if (! $request->is('api/*')) return null;`), nunca el panel Livewire. Se corrigió capturando `InvalidArgumentException|DomainException` en ambas páginas de creación y mostrando una notificación de Filament (`Halt` para detener el guardado sin más efectos). De paso se corrigió el mensaje "The rUC has already been taken." con `->validationAttribute('RUC')`. Suite: 129 tests, 309 assertions, 0 fallos; PHPStan y Deptrac limpios.
+**Sigue**: el mismo patrón de excepción sin capturar podría repetirse en cualquier otra página de Filament que invoque un caso de uso directamente (por ejemplo, elegir una empresa inactiva al crear una serie) — no se auditó exhaustivamente cada camino, solo los dos que se reprodujeron. `envios_sunat`/`eventos_comprobante` siguen sin escritor (ver gap en Snapshot actual).
 
 ### 2026-08-19 — Línea base de establecimientos consolidada
 **Hecho**: como el proyecto continúa en BETA y aún no existe un despliegue productivo, `departamento`, `provincia` y `distrito` se integraron directamente en `create_establecimientos_table`; se retiró la migración incremental `add_location_names`. La base de pruebas se reconstruyó desde cero y la suite completa pasó, mientras la base principal conservó comprobantes y CDR.
