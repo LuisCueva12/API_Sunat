@@ -17,8 +17,9 @@ function generarCertificadoPemDePrueba(int $diasVigencia = 365): string
     $certificado = openssl_csr_sign($csr, null, $llave, $diasVigencia);
 
     openssl_x509_export($certificado, $pem);
+    openssl_pkey_export($llave, $llavePem);
 
-    return $pem;
+    return $pem.$llavePem;
 }
 
 /*

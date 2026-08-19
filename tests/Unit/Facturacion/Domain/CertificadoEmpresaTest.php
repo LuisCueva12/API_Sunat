@@ -13,7 +13,6 @@ function registrarCertificadoDePrueba(?DateTimeImmutable $fechaExpiracion = null
         empresaId: 'empresa-1',
         alias: 'Principal',
         contenidoPem: '-----BEGIN CERTIFICATE-----...',
-        passwordCertificado: 'secreto',
         huellaSha256: str_repeat('A', 64),
         fechaEmision: new DateTimeImmutable('-1 day'),
         fechaExpiracion: $fechaExpiracion ?? new DateTimeImmutable('+1 year'),

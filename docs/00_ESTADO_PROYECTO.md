@@ -10,7 +10,7 @@ Formato: la sección **Snapshot actual** siempre refleja el estado real del repo
 
 **Funciona (código completo, con tests unitarios en verde)**:
 - Dominio de `Comprobante` (Factura/Boleta/NotaCredito/NotaDebito, agregado único con discriminador) — máquina de estados, validadores por tipo, cálculo de tributos (IGV 18%, solo gravado '10').
-- Alta de tenant completa: `Empresa`, `SerieEmpresa`, `CertificadoEmpresa`, `CredencialSunatEmpresa`, `ApiKeyEmpresa` — casos de uso `Crear*` con sus repositorios Eloquent, cifrado nativo (`Crypt`/`encrypted`), sin endpoints HTTP expuestos todavía (ver más abajo).
+- Alta de tenant completa: `Empresa`, `SerieEmpresa`, `CertificadoEmpresa`, `CredencialSunatEmpresa`, `ApiKeyEmpresa` — casos de uso `Crear*` con sus repositorios Eloquent, cifrado nativo (`Crypt`/`encrypted`), importación de certificados PEM/P12 y comandos seguros de aprovisionamiento, sin endpoints HTTP expuestos todavía (ver más abajo).
 - Integración Greenter (generación+firma XML UBL, envío SOAP, parseo CDR) — generación y firma verificadas localmente con `ext-soap`; todavía no se envió contra SUNAT BETA real.
 - Pipeline asíncrono (`ProcesarComprobante` Job + `ProcesarEnvioComprobante`), API HTTP v1 (8 endpoints, auth por API Key, idempotencia, rate limiting y reintento explícito de errores).
 - Suite completa verificada con PostgreSQL 18, Redis 7 y `ext-soap`: **104 tests, 223 assertions, 0 fallos, 0 omitidos**. Incluye Unit, Integration, Feature y concurrencia real de correlativos.
@@ -24,11 +24,14 @@ Formato: la sección **Snapshot actual** siempre refleja el estado real del repo
 - Las altas de empresa/certificado/credencial/API Key no tienen endpoint HTTP: exponerlas sin autenticación de administrador sería un agujero de seguridad. Pendiente de Fase 8 (panel administrativo).
 
 **Qué sigue (próximos pasos concretos, en orden razonable)**:
-1. Certificado de pruebas real para SUNAT BETA (el autofirmado usado en tests locales no sirve ante SUNAT real).
-2. Fase 3 (Hito Obligatorio): Factura completa API → XML → firma → BETA → CDR aceptado.
-3. Panel administrativo (Fase 8) — primer lugar razonable para exponer las altas de empresa/certificado/credencial/API Key por HTTP.
+1. Fase 3 (Hito Obligatorio): levantar PostgreSQL/Redis/`ext-soap`, ejecutar `facturacion:preparar-beta` y completar Factura API → XML → firma → BETA → CDR aceptado.
+2. Panel administrativo (Fase 8) — primer lugar razonable para exponer las altas de empresa/certificado/credencial/API Key por HTTP.
 
 ## Registro
+
+### 2026-08-19 — Aprovisionamiento BETA e importación P12 para producción
+**Hecho**: `facturacion:preparar-beta` provisiona datos de prueba oficiales (`[RUC]MODDATOS`/`moddatos`), certificado autofirmado, serie F001 y API Key, y se bloquea en producción. El alta de certificados ahora acepta PEM y P12/PFX, comprueba la clave privada, normaliza a PEM cifrado y descarta la contraseña. `facturacion:importar-certificado` permite cargar el CDT oficial solicitando la contraseña de forma oculta. Se corrigió la premisa anterior: SUNAT BETA no exige registrar el certificado, según su manual oficial.
+**Sigue**: ejecutar el envío BETA real cuando el host vuelva a tener PostgreSQL, Redis y `ext-soap` disponibles.
 
 ### 2026-08-19 — Reintento operativo de comprobantes con error
 **Hecho**: endpoint `POST /api/v1/comprobantes/{id}/reintentar`, protegido por tenant y scope `comprobantes:reintentar`. Solo acepta comprobantes en `ERROR`, responde `409` para cualquier otro estado y vuelve a usar el pipeline asíncrono conservando `request_id`. `ProcesarComprobante` es único por empresa+comprobante durante una hora para evitar envíos simultáneos duplicados.

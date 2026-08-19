@@ -8,7 +8,7 @@ final class CrearCertificadoDigitalInput
 {
     public function __construct(
         public readonly string $empresaId,
-        public readonly string $contenidoPem,
+        public readonly string $contenido,
         public readonly string $password,
         public readonly ?string $alias = null,
     ) {}

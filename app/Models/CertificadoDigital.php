@@ -16,7 +16,7 @@ use Illuminate\Support\Carbon;
  * @property string $empresa_id
  * @property string|null $alias
  * @property string $contenido_cifrado
- * @property string $password_cifrado
+ * @property string|null $password_cifrado
  * @property string|null $huella_sha256
  * @property Carbon|null $fecha_emision
  * @property Carbon $fecha_expiracion

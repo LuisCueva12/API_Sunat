@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignUuid('empresa_id')->constrained('empresas');
             $table->string('alias')->nullable();
             $table->text('contenido_cifrado');
-            $table->text('password_cifrado');
+            $table->text('password_cifrado')->nullable();
             $table->char('huella_sha256', 64)->nullable();
             $table->date('fecha_emision')->nullable();
             $table->date('fecha_expiracion');

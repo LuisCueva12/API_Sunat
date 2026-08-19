@@ -14,7 +14,6 @@ final class CertificadoEmpresa
         private readonly string $empresaId,
         private readonly ?string $alias,
         private readonly string $contenidoPem,
-        private readonly string $passwordCertificado,
         private readonly string $huellaSha256,
         private readonly ?DateTimeImmutable $fechaEmision,
         private readonly DateTimeImmutable $fechaExpiracion,
@@ -26,7 +25,6 @@ final class CertificadoEmpresa
         string $empresaId,
         ?string $alias,
         string $contenidoPem,
-        string $passwordCertificado,
         string $huellaSha256,
         ?DateTimeImmutable $fechaEmision,
         DateTimeImmutable $fechaExpiracion,
@@ -40,7 +38,6 @@ final class CertificadoEmpresa
             empresaId: $empresaId,
             alias: $alias,
             contenidoPem: $contenidoPem,
-            passwordCertificado: $passwordCertificado,
             huellaSha256: $huellaSha256,
             fechaEmision: $fechaEmision,
             fechaExpiracion: $fechaExpiracion,
@@ -53,13 +50,12 @@ final class CertificadoEmpresa
         string $empresaId,
         ?string $alias,
         string $contenidoPem,
-        string $passwordCertificado,
         string $huellaSha256,
         ?DateTimeImmutable $fechaEmision,
         DateTimeImmutable $fechaExpiracion,
         EstadoCertificado $estado,
     ): self {
-        return new self($id, $empresaId, $alias, $contenidoPem, $passwordCertificado, $huellaSha256, $fechaEmision, $fechaExpiracion, $estado);
+        return new self($id, $empresaId, $alias, $contenidoPem, $huellaSha256, $fechaEmision, $fechaExpiracion, $estado);
     }
 
     public function reemplazar(): void
@@ -100,11 +96,6 @@ final class CertificadoEmpresa
     public function contenidoPem(): string
     {
         return $this->contenidoPem;
-    }
-
-    public function passwordCertificado(): string
-    {
-        return $this->passwordCertificado;
     }
 
     public function huellaSha256(): string

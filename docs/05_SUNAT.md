@@ -6,6 +6,56 @@ Modelo: **SEE - Del Contribuyente** (ver [01_ARQUITECTURA.md](01_ARQUITECTURA.md
 
 `beta` y `producción`, configurados por `credenciales_sunat.entorno` (por empresa) — nunca hardcodeados en casos de uso, nunca mezclados. Configuración central en `config/facturacion.php`.
 
+### Preparación de BETA
+
+El manual oficial de SUNAT indica que el servicio BETA no exige tener el certificado registrado en SUNAT. Para este entorno se usa un certificado autofirmado y las credenciales públicas `[RUC]MODDATOS` / `moddatos`; no se deben reutilizar en producción.
+
+Después de migrar la base de datos:
+
+```bash
+php artisan facturacion:preparar-beta
+```
+
+El comando crea o reutiliza la empresa de pruebas con RUC `20100066603`, la serie `F001`, un certificado autofirmado cifrado, las credenciales BETA y una API Key. Está bloqueado cuando `APP_ENV=production`. Puede indicarse otro RUC válido con `--ruc=`.
+
+Con el servidor HTTP y el worker activos, una factura mínima puede enviarse así:
+
+```bash
+php artisan queue:work --tries=5
+
+curl -X POST http://localhost:8000/api/v1/facturas \
+  -H "Authorization: Bearer $API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: beta-factura-001" \
+  -d '{
+    "serie": "F001",
+    "receptor_tipo_documento": "6",
+    "receptor_numero_documento": "20100070970",
+    "receptor_razon_social": "CLIENTE DE PRUEBA SAC",
+    "items": [{
+      "descripcion": "SERVICIO DE PRUEBA BETA",
+      "unidad_medida": "NIU",
+      "cantidad": 1,
+      "valor_unitario": "100.00",
+      "tipo_afectacion_igv": "10"
+    }]
+  }'
+```
+
+`$API_KEY` es el valor mostrado una sola vez por `facturacion:preparar-beta`. El endpoint responde `202`; el resultado tributario se consulta en `GET /api/v1/comprobantes/{id}/estado`. BETA solo valida pruebas y nunca debe mezclarse con credenciales o documentos de producción.
+
+Fuente: [Manual del programador SEE - Sistemas del Contribuyente](https://cpe.sunat.gob.pe/sites/default/files/inline-files/manual_programador%20%281%29.pdf), sección Servicio Beta.
+
+### Certificado de producción
+
+El alta acepta PEM o el archivo P12/PFX entregado por SUNAT o por una entidad acreditada. Verifica la contraseña, la vigencia y que la clave privada corresponda al certificado; luego normaliza el contenido a PEM y lo cifra en la base de datos. La contraseña de importación no se conserva.
+
+```bash
+php artisan facturacion:importar-certificado EMPRESA_UUID /ruta/certificado.p12
+```
+
+La contraseña se solicita de forma oculta. El Certificado Digital Tributario gratuito puede solicitarse desde SOL siguiendo `Empresas → Comprobantes de Pago → Certificado Digital Tributario - CDT`. Fuente: [Certificado Digital Tributario de SUNAT](https://cpe.sunat.gob.pe/certificado-digital).
+
 ## Greenter
 
 Encapsulado íntegramente en `modules/Facturacion/Infrastructure/Sunat/Greenter/` — `GeneradorXmlGreenter`, `FirmadorXmlGreenter`, `ClienteSunatGreenter`, `ParserCdrGreenter`. Nada fuera de esa carpeta instancia clases de Greenter directamente.
@@ -32,7 +82,6 @@ Verificado leyendo `vendor/greenter/greenter` directamente, no asumido:
 - [ ] Formato de series para NC/ND vigente.
 - [ ] Contenido exacto requerido del QR en la representación impresa.
 - [ ] Regla de redondeo tributario esperada por SUNAT.
-- [ ] Certificado de pruebas real para SUNAT BETA (el usado en los tests locales es autofirmado y solo prueba que el código no truena — SUNAT lo rechazaría).
 - [ ] **Verificación de titularidad del certificado**: SUNAT exige que el certificado digital corresponda al RUC del emisor, pero el campo/OID exacto del Subject donde SUNAT espera encontrar ese RUC (y si además exige que la entidad emisora del certificado esté acreditada) no está confirmado con la especificación oficial. `AnalizadorCertificadoDigital` (`modules/Facturacion/Domain/Certificados/`) hoy solo valida que el certificado sea X.509 válido y no esté vencido — **no** compara el RUC del titular contra el de la empresa. Implementar ese chequeo sin la fuente oficial confirmada sería adivinar una regla tributaria, así que se deja pendiente explícitamente en vez de fingir una validación completa (ver [02_DOMINIO.md](02_DOMINIO.md)).
 
 Este archivo se actualiza con la respuesta y la fuente (documentación oficial SUNAT / especificación UBL / docs de Greenter) en cuanto cada punto se resuelva — nunca se inventa una regla tributaria.

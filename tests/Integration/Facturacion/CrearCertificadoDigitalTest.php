@@ -19,7 +19,7 @@ beforeEach(function () {
 it('crea y cifra un certificado digital activo', function () {
     $certificado = app(CrearCertificadoDigital::class)->ejecutar(new CrearCertificadoDigitalInput(
         empresaId: $this->empresa->id,
-        contenidoPem: generarCertificadoPemDePrueba(),
+        contenido: generarCertificadoPemDePrueba(),
         password: 'clave-secreta',
         alias: 'Principal',
     ));
@@ -32,23 +32,23 @@ it('crea y cifra un certificado digital activo', function () {
 
     $fila = CertificadoEloquent::query()->find($certificado->id());
 
-    expect($fila->password_cifrado)->toBe('clave-secreta')
+    expect($fila->password_cifrado)->toBeNull()
         ->and($fila->contenido_cifrado)->toBe($certificado->contenidoPem());
 
     $crudo = DB::table('certificados_digitales')->where('id', $certificado->id())->first();
-    expect($crudo->password_cifrado)->not->toBe('clave-secreta');
+    expect($crudo->password_cifrado)->toBeNull();
 });
 
 it('reemplaza el certificado activo previo y mantiene el histórico', function () {
     app(CrearCertificadoDigital::class)->ejecutar(new CrearCertificadoDigitalInput(
         empresaId: $this->empresa->id,
-        contenidoPem: generarCertificadoPemDePrueba(),
+        contenido: generarCertificadoPemDePrueba(),
         password: 'clave-1',
     ));
 
     app(CrearCertificadoDigital::class)->ejecutar(new CrearCertificadoDigitalInput(
         empresaId: $this->empresa->id,
-        contenidoPem: generarCertificadoPemDePrueba(),
+        contenido: generarCertificadoPemDePrueba(),
         password: 'clave-2',
     ));
 
@@ -59,7 +59,7 @@ it('reemplaza el certificado activo previo y mantiene el histórico', function (
 it('rechaza crear un certificado para una empresa inexistente', function () {
     app(CrearCertificadoDigital::class)->ejecutar(new CrearCertificadoDigitalInput(
         empresaId: (string) Str::uuid7(),
-        contenidoPem: generarCertificadoPemDePrueba(),
+        contenido: generarCertificadoPemDePrueba(),
         password: 'clave',
     ));
 })->throws(EmpresaInvalidaException::class);

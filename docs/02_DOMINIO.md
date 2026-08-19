@@ -106,7 +106,7 @@ Empresa                 activa/inactiva/suspendida. RUC único (índice UNIQUE e
 SerieEmpresa             empresa + tipo de comprobante + código (VO Serie) + activa.
                          Distinta del VO ValueObjects\Serie, que solo valida el formato
                          de 4 caracteres — SerieEmpresa es la fila configurada real.
-CertificadoEmpresa       empresa + PEM + password + huella SHA-256 + vigencia + estado
+CertificadoEmpresa       empresa + PEM normalizado + huella SHA-256 + vigencia + estado
                          (ACTIVO/VENCIDO/REVOCADO/REEMPLAZADO). Solo un ACTIVO por
                          empresa (índice único parcial en BD); al registrar uno nuevo,
                          el anterior se marca REEMPLAZADO en la misma transacción.
@@ -120,7 +120,7 @@ ApiKeyEmpresa            empresa + nombre + prefijo + hash + scopes + expiració
 
 Casos de uso: `CrearEmpresa`, `CrearSerie`, `CrearCertificadoDigital`, `CrearCredencialSunat`, `CrearApiKey` (`Application/CasosDeUso`). Todos validan que la empresa exista y esté activa antes de operar (mismo patrón, reutilizando `RepositorioEmpresa`).
 
-**`AnalizadorCertificadoDigital`** (`Domain/Certificados`) es un servicio de dominio concreto (sin puerto, igual que `CalculadorTributos`) que parsea el certificado X.509 vía `ext-openssl` — extensión núcleo de PHP, no Illuminate ni Greenter, por lo que vivir en Domain no rompe la regla de dependencia cero. Calcula la huella SHA-256 (`openssl_x509_fingerprint`) y la vigencia (`validFrom`/`validTo`); `CrearCertificadoDigital` rechaza registrar un certificado ya vencido.
+**`AnalizadorCertificadoDigital`** (`Domain/Certificados`) es un servicio de dominio concreto (sin puerto, igual que `CalculadorTributos`) que acepta PEM o PKCS#12 vía `ext-openssl` — extensión núcleo de PHP, no Illuminate ni Greenter, por lo que vivir en Domain no rompe la regla de dependencia cero. Comprueba la contraseña del P12/PFX, exige una clave privada correspondiente, normaliza certificado+clave a PEM, calcula la huella SHA-256 y la vigencia; `CrearCertificadoDigital` rechaza registrar un certificado ya vencido. El PEM se cifra en BD y la contraseña de importación se descarta.
 
 **Verificación de titularidad pendiente**: `AnalizadorCertificadoDigital` valida que el certificado sea un X.509 bien formado y no esté vencido, pero **no** verifica que el RUC del titular del certificado coincida con el RUC de la empresa que lo registra — SUNAT exige que el certificado corresponda al RUC emisor, pero el formato exacto en que ese RUC aparece dentro del certificado (qué campo del Subject, qué OID) no está confirmado con una fuente oficial todavía. No se implementa un chequeo adivinado: se documenta aquí como riesgo abierto (ver [05_SUNAT.md](05_SUNAT.md)) en vez de dar una falsa sensación de validación completa.
 

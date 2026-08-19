@@ -57,7 +57,7 @@ it('registra un certificado activo para una empresa activa', function () {
 
     $certificado = $casoDeUso->ejecutar(new CrearCertificadoDigitalInput(
         empresaId: 'empresa-1',
-        contenidoPem: generarCertificadoPemDePrueba(),
+        contenido: generarCertificadoPemDePrueba(),
         password: 'secreto',
         alias: 'Principal',
     ));
@@ -75,7 +75,6 @@ it('reemplaza el certificado activo previo al registrar uno nuevo', function () 
         empresaId: 'empresa-1',
         alias: null,
         contenidoPem: '-----BEGIN CERTIFICATE-----...',
-        passwordCertificado: 'x',
         huellaSha256: str_repeat('B', 64),
         fechaEmision: null,
         fechaExpiracion: new DateTimeImmutable('+1 year'),
@@ -93,7 +92,7 @@ it('reemplaza el certificado activo previo al registrar uno nuevo', function () 
 
     $casoDeUso->ejecutar(new CrearCertificadoDigitalInput(
         empresaId: 'empresa-1',
-        contenidoPem: generarCertificadoPemDePrueba(),
+        contenido: generarCertificadoPemDePrueba(),
         password: 'secreto',
     ));
 

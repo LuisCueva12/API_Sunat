@@ -72,7 +72,7 @@ ALTER TABLE series ADD CONSTRAINT series_unicas
 | empresa_id | uuid FK | |
 | alias | varchar | |
 | contenido_cifrado | text | .pfx cifrado con `Crypt` (AES-256-GCM sobre APP_KEY) |
-| password_cifrado | text | |
+| password_cifrado | text nullable | Compatibilidad de esquema; las nuevas importaciones normalizan a PEM y no conservan la contraseña |
 | huella_sha256 | varchar(64) | fingerprint, permite identificar sin descifrar |
 | fecha_emision, fecha_expiracion | date | job diario alerta 30/15/5 días antes de expirar |
 | estado | varchar | ACTIVO / VENCIDO / REVOCADO / REEMPLAZADO |

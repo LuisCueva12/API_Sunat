@@ -19,12 +19,6 @@ use Modules\Facturacion\Domain\ValueObjects\TipoDocumentoIdentidad;
 use Modules\Facturacion\Infrastructure\Sunat\Greenter\GeneradorXmlFirmadoGreenter;
 use Modules\Facturacion\Infrastructure\Sunat\Greenter\MapeadorFacturaGreenter;
 
-/**
- * Certificado autofirmado generado en memoria solo para probar que el
- * pipeline de mapeo+firma no truena y produce XML bien formado. SUNAT
- * jamás aceptaría este certificado — no es una prueba de validez ante
- * SUNAT, solo de que nuestro código funciona mecánicamente.
- */
 function certificadoDePruebaAutofirmado(): CertificadoDigital
 {
     $llave = openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA]);

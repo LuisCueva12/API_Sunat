@@ -178,7 +178,7 @@ No se agregan paquetes para UUID v7, rate limiting, cliente HTTP, cifrado — La
 | 1 | Dominio + BD core | Correlativo correcto bajo concurrencia simulada, sin SUNAT |
 | 2 | Greenter offline | XML firmado válido generado localmente |
 | 3 | SUNAT BETA (**Hito Obligatorio**) | Factura completa API→XML→firma→BETA→CDR aceptado, trazabilidad completa |
-| 4 | Async real | Código completo (`ProcesarComprobante` Job + `ProcesarEnvioComprobante`, certificados/credenciales cifrados, `AlmacenPrivado`) — pendiente de correr de verdad hasta resolver `ext-soap`/Postgres/Redis |
+| 4 | Async real | Código completo y validado con PostgreSQL/Redis/`ext-soap`: `ProcesarComprobante`, `ProcesarEnvioComprobante`, certificados/credenciales cifrados y `AlmacenPrivado` |
 | 5 | Boleta, NC, ND | Los 4 tipos emiten correctamente en BETA — código de dominio/aplicación completo desde antes de Fase 3 (`EmitirComprobanteBase` compartido), pendiente de probar en BETA junto con Factura |
 | 6 | Multiempresa real | Suite de tests de fuga entre tenants en verde |
 | 7 | Webhooks + Auditoría + Observabilidad | Eventos disparan webhooks firmados; toda acción sensible auditada |
@@ -202,7 +202,7 @@ Guías de remisión, detracciones, retenciones, percepciones, documentos especia
 - Formato vigente de series para NC/ND (Fase 5).
 - Contenido exacto del QR en representación impresa (antes de construir el PDF, Fase 5+).
 - Regla de redondeo tributario exacta esperada por SUNAT.
-- Certificado de pruebas real para SUNAT BETA — pendiente de conseguir uno (el certificado autofirmado usado para probar `GeneradorXmlFirmadoGreenter` localmente no sirve ante SUNAT real).
+- Certificado de producción emitido para el RUC del contribuyente — BETA admite el autofirmado generado por `facturacion:preparar-beta`, según el manual oficial de SUNAT.
 - `ext-soap` sigue sin instalarse en este entorno de desarrollo — bloquea cualquier uso de `Greenter\See` (confirmado: incluso `getXmlSigned()` sin enviar nada falla sin esta extensión, por cómo Greenter instancia su cliente SOAP en el constructor). Comando ya entregado al usuario: `sudo apt install php8.5-soap`.
 
 Resueltos y ya no son riesgos abiertos (ver [05_SUNAT.md](05_SUNAT.md) para el detalle): nombre/versión de `greenter/greenter`, si requiere `ext-soap`, rangos de código CDR (código `0` = aceptado, con notas = observaciones, ≠0 = rechazado — confirmado por la forma de `CdrResponse`), endpoints beta/producción reales.

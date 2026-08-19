@@ -35,9 +35,9 @@ final class CrearCertificadoDigital
             throw new EmpresaInvalidaException("La empresa {$input->empresaId} no está activa.");
         }
 
-        $datos = $this->analizador->analizar($input->contenidoPem);
+        $preparado = $this->analizador->preparar($input->contenido, $input->password);
 
-        return $this->transacciones->ejecutar(function () use ($input, $datos) {
+        return $this->transacciones->ejecutar(function () use ($input, $preparado) {
             $activo = $this->repositorio->buscarActivoPorEmpresa($input->empresaId);
 
             if ($activo !== null) {
@@ -49,11 +49,10 @@ final class CrearCertificadoDigital
                 id: $this->generadorId->nuevo(),
                 empresaId: $input->empresaId,
                 alias: $input->alias,
-                contenidoPem: $input->contenidoPem,
-                passwordCertificado: $input->password,
-                huellaSha256: $datos->huellaSha256,
-                fechaEmision: $datos->fechaEmision,
-                fechaExpiracion: $datos->fechaExpiracion,
+                contenidoPem: $preparado->contenidoPem,
+                huellaSha256: $preparado->datos->huellaSha256,
+                fechaEmision: $preparado->datos->fechaEmision,
+                fechaExpiracion: $preparado->datos->fechaExpiracion,
             );
 
             $this->repositorio->guardar($certificado);
