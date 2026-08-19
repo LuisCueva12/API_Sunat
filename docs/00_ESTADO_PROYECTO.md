@@ -21,16 +21,18 @@ Formato: la sección **Snapshot actual** siempre refleja el estado real del repo
 
 **Gaps documentados explícitamente (no resueltos, no inventados)**:
 - `AnalizadorCertificadoDigital` no verifica que el RUC del certificado coincida con el RUC de la empresa (falta la fuente oficial del campo/OID exacto) — ver `docs/05_SUNAT.md`.
-- `request_id` no viaja del HTTP request al Job async — ver `docs/07_COLAS.md`.
 - Las altas de empresa/certificado/credencial/API Key no tienen endpoint HTTP: exponerlas sin autenticación de administrador sería un agujero de seguridad. Pendiente de Fase 8 (panel administrativo).
 
 **Qué sigue (próximos pasos concretos, en orden razonable)**:
 1. Certificado de pruebas real para SUNAT BETA (el autofirmado usado en tests locales no sirve ante SUNAT real).
 2. Fase 3 (Hito Obligatorio): Factura completa API → XML → firma → BETA → CDR aceptado.
 3. Panel administrativo (Fase 8) — primer lugar razonable para exponer las altas de empresa/certificado/credencial/API Key por HTTP.
-4. Cerrar el gap de `request_id` en el pipeline async.
 
 ## Registro
+
+### 2026-08-19 — Trazabilidad HTTP hasta el worker asíncrono
+**Hecho**: `request_id` viaja desde el middleware HTTP por `EmitirComprobanteInput` y `DespachadorProcesamiento` hasta `ProcesarComprobante`. El Job registra como contexto compartido `request_id`, `empresa_id` y `comprobante_id`, que Laravel limpia entre ejecuciones del worker. Una prueba Feature verifica el header, la respuesta y el Job encolado.
+**Sigue**: obtener certificado y credenciales de pruebas para completar el hito contra SUNAT BETA.
 
 ### 2026-08-19 — Primera validación completa con PostgreSQL, Redis y SOAP
 **Hecho**: se levantó un runtime aislado con PostgreSQL 18, Redis 7 y `ext-soap`/`ext-redis`, y se ejecutó por primera vez toda la suite: 104 tests, 223 assertions, 0 fallos y 0 omitidos. La corrida real descubrió y permitió corregir incompatibilidades que Unit no podía detectar: FK autorreferente creada antes de que PostgreSQL pudiera resolver la PK, IDs de dominio descartados por mass assignment de Eloquent, longitud insuficiente del prefijo API Key, escala monetaria de BD incompatible con `Dinero`, helper X.509 no compartido entre suites y ejecución accidental del Job SUNAT síncrono en tests de emisión. PHPStan quedó en 0 errores, Pint pasó y Deptrac quedó en 0 violaciones.

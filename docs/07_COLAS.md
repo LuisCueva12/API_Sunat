@@ -35,6 +35,6 @@ Pendiente (Fase 9): comando propio para inspeccionar comprobantes en `ERROR` cru
 
 No se implementa circuit breaker formal en V1 — el backoff + tope de intentos es resiliencia suficiente sin la complejidad de un breaker dedicado. Se reevalúa con datos reales de fallos de SUNAT en producción.
 
-## request_id a través de async — gap conocido, no resuelto todavía
+## request_id a través de async
 
-El Job `ProcesarComprobante` recibe `empresaId`/`comprobanteId`/`entorno`, **no** `request_id` — no se hiló todavía desde el request HTTP original hasta el log del worker. Para cerrarlo: agregar `requestId` opcional a `EmitirComprobanteInput`, que los controladores llenen desde `$request->attributes->get('request_id')`, y que `EmitirComprobanteBase` se lo pase a `DespachadorProcesamiento::despacharEnvio()`. No implementado todavía — anotado aquí en vez de darlo por hecho.
+El middleware HTTP asigna un `request_id`, los controladores lo incluyen en `EmitirComprobanteInput` y `EmitirComprobanteBase` lo entrega al despachador. `ProcesarComprobante` conserva el valor serializado y, al ejecutarse, comparte con el logger el contexto `request_id`, `empresa_id` y `comprobante_id`. Laravel limpia ese contexto entre Jobs para impedir que un worker reutilizado mezcle la trazabilidad de comprobantes distintos.

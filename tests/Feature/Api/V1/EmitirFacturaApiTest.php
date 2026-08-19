@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Jobs\ProcesarComprobante;
 use App\Models\ApiKey as ApiKeyEloquent;
 use App\Models\Comprobante as ComprobanteEloquent;
 use App\Models\Empresa as EmpresaEloquent;
@@ -80,6 +81,27 @@ it('emite una factura vía API con autenticación correcta', function () {
         ->assertJsonStructure(['data', 'meta' => ['request_id']]);
 
     expect(ComprobanteEloquent::query()->count())->toBe(1);
+});
+
+it('propaga el request id al procesamiento asíncrono', function () {
+    [$empresa, $apiKey] = crearEmpresaConApiKey();
+    crearSerieFactura($empresa->id);
+
+    $requestId = 'req-integracion-9841';
+
+    $this->withHeaders([
+        'Authorization' => "Bearer {$apiKey}",
+        'X-Request-Id' => $requestId,
+    ])->postJson('/api/v1/facturas', payloadFacturaValida())
+        ->assertStatus(202)
+        ->assertHeader('X-Request-Id', $requestId)
+        ->assertJsonPath('meta.request_id', $requestId);
+
+    Queue::assertPushed(
+        ProcesarComprobante::class,
+        fn (ProcesarComprobante $job): bool => $job->requestId === $requestId
+            && $job->empresaId === $empresa->id,
+    );
 });
 
 it('rechaza sin header de autorización', function () {

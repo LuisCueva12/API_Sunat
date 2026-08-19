@@ -11,9 +11,7 @@ use Modules\Facturacion\Domain\Comprobante\Comprobante;
 
 trait InteractuaConComprobantes
 {
-    /**
-     * @param  array<string, mixed>  $validado
-     */
+
     protected function construirInput(array $validado, Request $request): EmitirComprobanteInput
     {
         return new EmitirComprobanteInput(
@@ -38,6 +36,7 @@ trait InteractuaConComprobantes
             comprobanteReferenciaId: $validado['comprobante_referencia_id'] ?? null,
             codigoMotivo: $validado['codigo_motivo'] ?? null,
             descripcionMotivo: $validado['descripcion_motivo'] ?? null,
+            requestId: $request->attributes->getString('request_id'),
         );
     }
 

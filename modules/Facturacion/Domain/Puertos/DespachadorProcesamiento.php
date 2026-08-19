@@ -6,5 +6,5 @@ namespace Modules\Facturacion\Domain\Puertos;
 
 interface DespachadorProcesamiento
 {
-    public function despacharEnvio(string $empresaId, string $comprobanteId): void;
+    public function despacharEnvio(string $empresaId, string $comprobanteId, ?string $requestId = null): void;
 }

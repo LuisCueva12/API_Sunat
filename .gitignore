@@ -6,6 +6,7 @@
 .env.testing
 .phpactor.json
 .phpunit.result.cache
+.deptrac.cache
 /.codex
 /.cursor/
 /.idea

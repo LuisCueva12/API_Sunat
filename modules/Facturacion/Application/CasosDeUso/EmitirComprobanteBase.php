@@ -94,7 +94,11 @@ abstract class EmitirComprobanteBase
             return $comprobante;
         });
 
-        $this->despachador->despacharEnvio($comprobante->empresaId(), $comprobante->id());
+        $this->despachador->despacharEnvio(
+            $comprobante->empresaId(),
+            $comprobante->id(),
+            $input->requestId,
+        );
 
         return $comprobante;
     }

@@ -21,5 +21,6 @@ final class EmitirComprobanteInput
         public readonly ?string $comprobanteReferenciaId = null,
         public readonly ?string $codigoMotivo = null,
         public readonly ?string $descripcionMotivo = null,
+        public readonly ?string $requestId = null,
     ) {}
 }
