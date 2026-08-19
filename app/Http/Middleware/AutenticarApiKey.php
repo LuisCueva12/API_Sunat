@@ -6,15 +6,15 @@ namespace App\Http\Middleware;
 
 use App\Http\Api\RespuestaApi;
 use App\Models\ApiKey;
-use App\Services\ApiKeys\GeneradorApiKey;
 use Closure;
 use Illuminate\Http\Request;
+use Modules\Facturacion\Domain\Puertos\GeneradorClaveApi;
 use Symfony\Component\HttpFoundation\Response;
 
 final class AutenticarApiKey
 {
     public function __construct(
-        private readonly GeneradorApiKey $generadorApiKey,
+        private readonly GeneradorClaveApi $generadorClaveApi,
     ) {}
 
     public function handle(Request $request, Closure $next): Response
@@ -29,7 +29,7 @@ final class AutenticarApiKey
             );
         }
 
-        $apiKey = ApiKey::query()->where('hash', $this->generadorApiKey->hash($token))->first();
+        $apiKey = ApiKey::query()->where('hash', $this->generadorClaveApi->hash($token))->first();
 
         if ($apiKey === null || ! $apiKey->estaVigente()) {
             return RespuestaApi::error(

@@ -33,5 +33,6 @@ Verificado leyendo `vendor/greenter/greenter` directamente, no asumido:
 - [ ] Contenido exacto requerido del QR en la representación impresa.
 - [ ] Regla de redondeo tributario esperada por SUNAT.
 - [ ] Certificado de pruebas real para SUNAT BETA (el usado en los tests locales es autofirmado y solo prueba que el código no truena — SUNAT lo rechazaría).
+- [ ] **Verificación de titularidad del certificado**: SUNAT exige que el certificado digital corresponda al RUC del emisor, pero el campo/OID exacto del Subject donde SUNAT espera encontrar ese RUC (y si además exige que la entidad emisora del certificado esté acreditada) no está confirmado con la especificación oficial. `AnalizadorCertificadoDigital` (`modules/Facturacion/Domain/Certificados/`) hoy solo valida que el certificado sea X.509 válido y no esté vencido — **no** compara el RUC del titular contra el de la empresa. Implementar ese chequeo sin la fuente oficial confirmada sería adivinar una regla tributaria, así que se deja pendiente explícitamente en vez de fingir una validación completa (ver [02_DOMINIO.md](02_DOMINIO.md)).
 
 Este archivo se actualiza con la respuesta y la fuente (documentación oficial SUNAT / especificación UBL / docs de Greenter) en cuanto cada punto se resuelva — nunca se inventa una regla tributaria.

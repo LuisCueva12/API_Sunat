@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace App\Services\ApiKeys;
+namespace Modules\Facturacion\Domain\Empresa;
 
-final class ResultadoGeneracionApiKey
+final class ResultadoClaveApi
 {
     public function __construct(
-        public readonly string $keyCompleta,
+        public readonly string $claveCompleta,
         public readonly string $prefijo,
         public readonly string $hash,
     ) {}

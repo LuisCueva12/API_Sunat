@@ -5,9 +5,9 @@ declare(strict_types=1);
 use App\Models\ApiKey as ApiKeyEloquent;
 use App\Models\Comprobante as ComprobanteEloquent;
 use App\Models\Empresa as EmpresaEloquent;
-use App\Services\ApiKeys\GeneradorApiKey;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Modules\Facturacion\Infrastructure\Seguridad\GeneradorClaveApiSegura;
 
 function crearEmpresaConApiKey(array $scopes = ['comprobantes:crear', 'comprobantes:leer']): array
 {
@@ -17,7 +17,7 @@ function crearEmpresaConApiKey(array $scopes = ['comprobantes:crear', 'comproban
         'estado' => 'ACTIVA',
     ]);
 
-    $resultado = (new GeneradorApiKey)->generar();
+    $resultado = (new GeneradorClaveApiSegura)->generar();
 
     ApiKeyEloquent::create([
         'empresa_id' => $empresa->id,
@@ -28,7 +28,7 @@ function crearEmpresaConApiKey(array $scopes = ['comprobantes:crear', 'comproban
         'estado' => 'ACTIVA',
     ]);
 
-    return [$empresa, $resultado->keyCompleta];
+    return [$empresa, $resultado->claveCompleta];
 }
 
 function crearSerieFactura(string $empresaId, string $serie = 'F001'): void

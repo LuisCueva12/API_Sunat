@@ -77,7 +77,7 @@ interface ValidadorComprobante
 
 ## Puertos (interfaces hacia Infrastructure)
 
-Implementados y wireados en `DomainServiceProvider` (los 3 primeros) o ya escritos pendientes de wiring (los 2 de SUNAT, faltan certificados/credenciales reales):
+Implementados y wireados en `DomainServiceProvider`:
 
 ```php
 interface RepositorioComprobante { guardar(Comprobante $c): void; buscarPorId(string $empresaId, string $id): ?Comprobante; }
@@ -96,3 +96,34 @@ Pendientes (no bloquean Factura, pero están documentados desde el inicio): `Alm
 - Nuevos Value Objects de soporte: `CertificadoDigital` (contenido PEM descifrado, transitorio en memoria), `DatosEmisor` (Domain/Empresa — RUC/razón social/dirección del emisor, separado de Comprobante porque el emisor es responsabilidad de Empresa, no del agregado Comprobante), `TotalesComprobante` (desglose completo: gravada/exonerada/inafecta/gratuita/IGV/descuentos/total, no solo el total), `ResultadoEnvio` (distingue aceptado/aceptado-con-observaciones/rechazado/error-técnico).
 
 Implementaciones en `modules/Facturacion/Infrastructure/*`. El dominio nunca instancia una implementación concreta directamente.
+
+## Empresa y alta de tenant (`Domain/Empresa`)
+
+Entidades independientes del agregado `Comprobante`, cada una con su propio puerto de repositorio y caso de uso `Crear*` en Application:
+
+```text
+Empresa                 activa/inactiva/suspendida. RUC único (índice UNIQUE en BD).
+SerieEmpresa             empresa + tipo de comprobante + código (VO Serie) + activa.
+                         Distinta del VO ValueObjects\Serie, que solo valida el formato
+                         de 4 caracteres — SerieEmpresa es la fila configurada real.
+CertificadoEmpresa       empresa + PEM + password + huella SHA-256 + vigencia + estado
+                         (ACTIVO/VENCIDO/REVOCADO/REEMPLAZADO). Solo un ACTIVO por
+                         empresa (índice único parcial en BD); al registrar uno nuevo,
+                         el anterior se marca REEMPLAZADO en la misma transacción.
+CredencialSunatEmpresa   empresa + entorno (BETA/PRODUCCION) + usuario/clave SOL +
+                         activa. Única por (empresa, entorno); registrar sobre un
+                         entorno ya configurado rota la credencial en vez de duplicar.
+ApiKeyEmpresa            empresa + nombre + prefijo + hash + scopes + expiración +
+                         estado (ACTIVA/REVOCADA). Los scopes válidos están cerrados
+                         en el propio agregado (`ApiKeyEmpresa::ESCOPOS_VALIDOS`).
+```
+
+Casos de uso: `CrearEmpresa`, `CrearSerie`, `CrearCertificadoDigital`, `CrearCredencialSunat`, `CrearApiKey` (`Application/CasosDeUso`). Todos validan que la empresa exista y esté activa antes de operar (mismo patrón, reutilizando `RepositorioEmpresa`).
+
+**`AnalizadorCertificadoDigital`** (`Domain/Certificados`) es un servicio de dominio concreto (sin puerto, igual que `CalculadorTributos`) que parsea el certificado X.509 vía `ext-openssl` — extensión núcleo de PHP, no Illuminate ni Greenter, por lo que vivir en Domain no rompe la regla de dependencia cero. Calcula la huella SHA-256 (`openssl_x509_fingerprint`) y la vigencia (`validFrom`/`validTo`); `CrearCertificadoDigital` rechaza registrar un certificado ya vencido.
+
+**Verificación de titularidad pendiente**: `AnalizadorCertificadoDigital` valida que el certificado sea un X.509 bien formado y no esté vencido, pero **no** verifica que el RUC del titular del certificado coincida con el RUC de la empresa que lo registra — SUNAT exige que el certificado corresponda al RUC emisor, pero el formato exacto en que ese RUC aparece dentro del certificado (qué campo del Subject, qué OID) no está confirmado con una fuente oficial todavía. No se implementa un chequeo adivinado: se documenta aquí como riesgo abierto (ver [05_SUNAT.md](05_SUNAT.md)) en vez de dar una falsa sensación de validación completa.
+
+**`GeneradorClaveApi`** (puerto) + `GeneradorClaveApiSegura` (Infrastructure) generan la API Key (32 caracteres aleatorios vía `random_bytes`, prefijo `fe_live_`) y su hash SHA-256. `CrearApiKey` devuelve `ResultadoCrearApiKey { apiKey, claveCompleta }` — `claveCompleta` es la única vez que el valor en texto plano existe fuera de la memoria transitoria del proceso; nunca se persiste (ver [06_SEGURIDAD.md](06_SEGURIDAD.md)).
+
+**Sin endpoints HTTP todavía**: estas altas son intencionalmente solo Domain+Application+Infrastructure por ahora. Exponerlas en la API pública V1 (autenticada con la propia API Key del tenant) no tiene sentido para "crear la primera empresa/API Key" — es un problema de huevo y gallina. La forma correcta es un área administrativa autenticada aparte (Fase 8, panel — ver [01_ARQUITECTURA.md](01_ARQUITECTURA.md) §10), todavía no construida. Hasta entonces, estos casos de uso se invocan desde comandos de consola/tinker o tests, nunca desde una ruta pública sin autenticación.

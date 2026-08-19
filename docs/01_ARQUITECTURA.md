@@ -57,8 +57,8 @@ seleccionados por factory según `tipo`.
 
 ## 3. Módulos
 
-1. **Empresas** — empresa, establecimientos, series.
-2. **Credenciales & Certificados** — aislado por sensibilidad; único módulo con permiso de descifrar.
+1. **Empresas** — empresa, establecimientos, series. Alta implementada: `Empresa`, `SerieEmpresa` (ver [02_DOMINIO.md](02_DOMINIO.md)).
+2. **Credenciales & Certificados** — aislado por sensibilidad; único módulo con permiso de descifrar. Alta implementada: `CertificadoEmpresa`, `CredencialSunatEmpresa` — cifrado nativo Laravel (`Crypt`), sin exponerse aún por HTTP (ver [06_SEGURIDAD.md](06_SEGURIDAD.md)).
 3. **Facturación** (núcleo) — comprobantes, items, tributos, cálculo, numeración, estados, casos de uso `Emitir*`.
 4. **Integración SUNAT** — adaptadores Greenter, envío, procesamiento CDR, reintentos.
 5. **Documentos** — generación/almacenamiento de XML, CDR, PDF, hashes.
