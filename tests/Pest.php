@@ -5,6 +5,22 @@ declare(strict_types=1);
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
+function generarCertificadoPemDePrueba(int $diasVigencia = 365): string
+{
+    $llave = openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA]);
+
+    $csr = openssl_csr_new(
+        ['commonName' => 'Empresa de Prueba SAC', 'countryName' => 'PE'],
+        $llave,
+    );
+
+    $certificado = openssl_csr_sign($csr, null, $llave, $diasVigencia);
+
+    openssl_x509_export($certificado, $pem);
+
+    return $pem;
+}
+
 /*
 |--------------------------------------------------------------------------
 | Test Case

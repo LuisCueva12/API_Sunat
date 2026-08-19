@@ -20,8 +20,8 @@ return new class extends Migration
             $table->string('unidad_medida', 3)->default('NIU');
 
             $table->decimal('cantidad', 12, 3);
-            $table->decimal('valor_unitario', 12, 3);
-            $table->decimal('precio_unitario', 12, 3);
+            $table->decimal('valor_unitario', 12, 2);
+            $table->decimal('precio_unitario', 12, 2);
 
             $table->string('tipo_afectacion_igv', 2);
             $table->decimal('monto_igv', 12, 2)->default(0);

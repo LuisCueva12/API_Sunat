@@ -15,7 +15,7 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->foreignUuid('empresa_id')->constrained('empresas');
             $table->string('nombre');
-            $table->string('prefijo', 12);
+            $table->string('prefijo', 16);
             $table->string('hash')->unique();
             $table->jsonb('scopes')->default(DB::raw("'[]'::jsonb"));
             $table->timestampTz('ultimo_uso_at')->nullable();

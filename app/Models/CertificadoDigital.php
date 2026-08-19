@@ -24,7 +24,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon $created_at
  * @property Carbon $updated_at
  */
-#[Fillable(['empresa_id', 'alias', 'contenido_cifrado', 'password_cifrado', 'huella_sha256', 'fecha_emision', 'fecha_expiracion', 'estado'])]
+#[Fillable(['id', 'empresa_id', 'alias', 'contenido_cifrado', 'password_cifrado', 'huella_sha256', 'fecha_emision', 'fecha_expiracion', 'estado'])]
 #[Hidden(['contenido_cifrado', 'password_cifrado'])]
 class CertificadoDigital extends Model
 {

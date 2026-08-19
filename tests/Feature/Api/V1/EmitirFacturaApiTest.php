@@ -6,13 +6,20 @@ use App\Models\ApiKey as ApiKeyEloquent;
 use App\Models\Comprobante as ComprobanteEloquent;
 use App\Models\Empresa as EmpresaEloquent;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Modules\Facturacion\Infrastructure\Seguridad\GeneradorClaveApiSegura;
 
-function crearEmpresaConApiKey(array $scopes = ['comprobantes:crear', 'comprobantes:leer']): array
-{
+beforeEach(function () {
+    Queue::fake();
+});
+
+function crearEmpresaConApiKey(
+    array $scopes = ['comprobantes:crear', 'comprobantes:leer'],
+    string $ruc = '20100070970',
+): array {
     $empresa = EmpresaEloquent::create([
-        'ruc' => '20100070970',
+        'ruc' => $ruc,
         'razon_social' => 'Empresa de Prueba SAC',
         'estado' => 'ACTIVA',
     ]);
@@ -147,7 +154,7 @@ it('nunca permite que una empresa consulte el comprobante de otra', function () 
         ->postJson('/api/v1/facturas', payloadFacturaValida());
     $comprobanteDeA = ComprobanteEloquent::query()->first();
 
-    [, $apiKeyB] = crearEmpresaConApiKey();
+    [, $apiKeyB] = crearEmpresaConApiKey(ruc: '20100070971');
 
     $this->withHeader('Authorization', "Bearer {$apiKeyB}")
         ->getJson("/api/v1/comprobantes/{$comprobanteDeA->id}")

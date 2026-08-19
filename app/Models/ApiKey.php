@@ -24,7 +24,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon $created_at
  * @property Carbon $updated_at
  */
-#[Fillable(['empresa_id', 'nombre', 'prefijo', 'hash', 'scopes', 'expira_at', 'estado'])]
+#[Fillable(['id', 'empresa_id', 'nombre', 'prefijo', 'hash', 'scopes', 'expira_at', 'estado'])]
 class ApiKey extends Model
 {
     use HasUuids;

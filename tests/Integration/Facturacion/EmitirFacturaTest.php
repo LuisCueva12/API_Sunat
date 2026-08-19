@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\Comprobante as ComprobanteEloquent;
 use App\Models\Empresa as EmpresaEloquent;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Modules\Facturacion\Application\CasosDeUso\EmitirFactura;
 use Modules\Facturacion\Application\DTO\EmitirComprobanteInput;
@@ -13,6 +14,8 @@ use Modules\Facturacion\Domain\Comprobante\EstadoComprobante;
 use Modules\Facturacion\Domain\Excepciones\ComprobanteInvalidoException;
 
 beforeEach(function () {
+    Queue::fake();
+
     $this->empresa = EmpresaEloquent::create([
         'ruc' => '20100070970',
         'razon_social' => 'Empresa de Prueba SAC',

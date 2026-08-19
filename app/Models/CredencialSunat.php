@@ -21,7 +21,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon $created_at
  * @property Carbon $updated_at
  */
-#[Fillable(['empresa_id', 'entorno', 'usuario_sol_cifrado', 'clave_sol_cifrada', 'estado'])]
+#[Fillable(['id', 'empresa_id', 'entorno', 'usuario_sol_cifrado', 'clave_sol_cifrada', 'estado'])]
 #[Hidden(['usuario_sol_cifrado', 'clave_sol_cifrada'])]
 class CredencialSunat extends Model
 {

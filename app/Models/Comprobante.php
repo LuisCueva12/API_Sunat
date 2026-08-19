@@ -53,7 +53,7 @@ use Illuminate\Support\Carbon;
  * @property Collection<int, ComprobanteTributo> $tributos
  */
 #[Fillable([
-    'empresa_id', 'tipo', 'serie', 'correlativo', 'estado', 'moneda', 'tipo_cambio',
+    'id', 'empresa_id', 'tipo', 'serie', 'correlativo', 'estado', 'moneda', 'tipo_cambio',
     'receptor_tipo_documento', 'receptor_numero_documento', 'receptor_razon_social',
     'receptor_direccion', 'receptor_email', 'fecha_emision', 'fecha_vencimiento',
     'forma_pago', 'op_gravada', 'op_exonerada', 'op_inafecta', 'op_gratuita',

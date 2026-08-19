@@ -20,7 +20,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon $created_at
  * @property Carbon $updated_at
  */
-#[Fillable(['ruc', 'razon_social', 'nombre_comercial', 'estado', 'configuracion'])]
+#[Fillable(['id', 'ruc', 'razon_social', 'nombre_comercial', 'estado', 'configuracion'])]
 class Empresa extends Model
 {
     use HasUuids;

@@ -41,7 +41,7 @@ return new class extends Migration
             $table->decimal('total_descuentos', 12, 2)->default(0);
             $table->decimal('total', 12, 2);
 
-            $table->foreignUuid('comprobante_referencia_id')->nullable()->constrained('comprobantes');
+            $table->uuid('comprobante_referencia_id')->nullable();
             $table->string('tipo_nota')->nullable();
             $table->string('motivo_nota')->nullable();
 
@@ -62,6 +62,10 @@ return new class extends Migration
             $table->unique(['empresa_id', 'tipo', 'serie', 'correlativo']);
             $table->index(['empresa_id', 'estado']);
             $table->index(['empresa_id', 'fecha_emision']);
+        });
+
+        Schema::table('comprobantes', function (Blueprint $table) {
+            $table->foreign('comprobante_referencia_id')->references('id')->on('comprobantes');
         });
 
         DB::statement("ALTER TABLE comprobantes ADD CONSTRAINT comprobantes_tipo_check CHECK (tipo IN ('FACTURA','BOLETA','NOTA_CREDITO','NOTA_DEBITO'))");
