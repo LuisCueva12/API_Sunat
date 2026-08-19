@@ -30,6 +30,10 @@ Formato: la sección **Snapshot actual** siempre refleja el estado real del repo
 
 ## Registro
 
+### 2026-08-19 — Línea base de establecimientos consolidada
+**Hecho**: como el proyecto continúa en BETA y aún no existe un despliegue productivo, `departamento`, `provincia` y `distrito` se integraron directamente en `create_establecimientos_table`; se retiró la migración incremental `add_location_names`. La base de pruebas se reconstruyó desde cero y la suite completa pasó, mientras la base principal conservó comprobantes y CDR.
+**Sigue**: a partir del primer despliegue productivo, cualquier cambio de esquema volverá a ser siempre una migración incremental e inmutable.
+
 ### 2026-08-19 — Primera vertical del panel administrativo interno
 **Hecho**: se habilitó Filament 5.7 en `/admin` sin registro público. El acceso requiere simultáneamente usuario interno (`empresa_id` nulo) y rol Spatie `super_admin`; se añadieron tablas RBAC compatibles con UUID. `facturacion:crear-admin` crea el primer operador con contraseña oculta y política fuerte. El panel gestiona empresas, establecimientos y series, mantiene un solo establecimiento principal por empresa, impide editar RUC/identidad de series y no ofrece borrado. Las altas de empresa y serie invocan los casos de uso existentes. Pruebas Feature cubren invitado, rol ausente, aislamiento de tenant, acceso autorizado, comando y creación Livewire real. Suite completa: 124 tests y 291 assertions.
 **Sigue**: añadir acciones seguras para certificados, credenciales y API Keys sin mostrar material cifrado ni claves completas después de su creación.

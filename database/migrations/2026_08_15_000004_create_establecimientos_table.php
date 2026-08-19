@@ -16,6 +16,9 @@ return new class extends Migration
             $table->string('codigo', 4)->default('0000');
             $table->string('denominacion')->nullable();
             $table->string('ubigeo', 6)->nullable();
+            $table->string('departamento')->nullable();
+            $table->string('provincia')->nullable();
+            $table->string('distrito')->nullable();
             $table->string('direccion')->nullable();
             $table->boolean('es_principal')->default(false);
             $table->timestampsTz();
