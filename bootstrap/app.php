@@ -6,10 +6,13 @@ use App\Http\Api\RespuestaApi;
 use App\Http\Middleware\AsignarRequestId;
 use App\Http\Middleware\Idempotencia;
 use App\Http\Middleware\ResolverEmpresaIntegracion;
+use App\Models\Usuario;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Laravel\Passport\Exceptions\AuthenticationException as PassportAuthenticationException;
@@ -20,6 +23,7 @@ use Modules\Facturacion\Domain\Excepciones\ConfiguracionSunatInvalidaException;
 use Modules\Facturacion\Domain\Excepciones\SerieInvalidaException;
 use Modules\Facturacion\Domain\Excepciones\TransicionEstadoInvalidaException;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -87,6 +91,40 @@ return Application::configure(basePath: dirname(__DIR__))
                 'Esta integración no tiene el permiso requerido: '.implode(', ', $e->getPrevious()->scopes()).'.',
                 403,
             );
+        });
+
+        $exceptions->render(function (HttpException $e, Request $request) {
+            if ($e->getStatusCode() !== 403) {
+                return null;
+            }
+
+            $panels = Filament::getPanels();
+            $esRutaDePanel = collect($panels)->contains(
+                fn ($panel) => $request->is($panel->getPath()) || $request->is($panel->getPath().'/*'),
+            );
+
+            if (! $esRutaDePanel) {
+                return null;
+            }
+
+            $usuario = Auth::guard('web')->user();
+
+            if (! $usuario instanceof Usuario) {
+                return null;
+            }
+
+            foreach ($panels as $panel) {
+                if ($usuario->canAccessPanel($panel)) {
+                    return redirect($panel->getUrl());
+                }
+            }
+
+            Auth::guard('web')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect(reset($panels)->getLoginUrl())
+                ->with('error', 'Tu cuenta no tiene acceso a ningún panel disponible.');
         });
 
         $exceptions->render(function (ComprobanteInvalidoException|SerieInvalidaException $e, Request $request) {

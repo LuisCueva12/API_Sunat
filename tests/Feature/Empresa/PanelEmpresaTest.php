@@ -30,14 +30,15 @@ it('redirige a los invitados al login del panel de empresa', function () {
     $this->get('/app')->assertRedirect('/app/login');
 });
 
-it('rechaza un usuario sin empresa asignada', function () {
+it('rechaza un usuario sin empresa asignada y cierra su sesión', function () {
     $usuario = Usuario::query()->create([
         'name' => 'Sin empresa',
         'email' => 'sin-empresa@example.test',
         'password' => 'Clave-segura-123!',
     ]);
 
-    $this->actingAs($usuario)->get('/app')->assertForbidden();
+    $this->actingAs($usuario)->get('/app')->assertRedirect('/admin/login');
+    $this->assertGuest('web');
 });
 
 it('permite a un usuario de empresa entrar a su panel', function () {
@@ -94,7 +95,7 @@ it('nunca permite ver por URL directa el comprobante de otra empresa', function 
     $this->get("/app/comprobantes/{$comprobanteDeB->id}")->assertNotFound();
 });
 
-it('un super_admin sin empresa no puede entrar al panel de empresa', function () {
+it('un super_admin sin empresa no puede entrar al panel de empresa y es redirigido al suyo', function () {
     $usuario = Usuario::query()->create([
         'name' => 'Administrador',
         'email' => 'admin-sin-empresa@example.test',
@@ -102,7 +103,7 @@ it('un super_admin sin empresa no puede entrar al panel de empresa', function ()
     ]);
     $usuario->assignRole(Role::findOrCreate('super_admin', 'web'));
 
-    $this->actingAs($usuario)->get('/app')->assertForbidden();
+    $this->actingAs($usuario)->get('/app')->assertRedirect('/admin');
 });
 
 it('crea un cliente desde el panel de empresa sin pedir la empresa (se resuelve del usuario autenticado)', function () {

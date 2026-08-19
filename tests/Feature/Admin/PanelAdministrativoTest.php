@@ -55,17 +55,18 @@ it('redirige a los invitados al login del panel', function () {
     $this->get('/admin')->assertRedirect('/admin/login');
 });
 
-it('rechaza usuarios sin el rol de administrador', function () {
+it('rechaza usuarios sin el rol de administrador y cierra su sesión', function () {
     $usuario = Usuario::query()->create([
         'name' => 'Operador sin rol',
         'email' => 'sin-rol@example.test',
         'password' => 'Clave-segura-123!',
     ]);
 
-    $this->actingAs($usuario)->get('/admin')->assertForbidden();
+    $this->actingAs($usuario)->get('/admin')->assertRedirect('/admin/login');
+    $this->assertGuest('web');
 });
 
-it('rechaza usuarios asociados a un tenant aunque tengan el rol administrativo', function () {
+it('rechaza usuarios asociados a un tenant aunque tengan el rol administrativo y los redirige a su panel', function () {
     $empresa = Empresa::query()->create([
         'ruc' => '20100070970',
         'razon_social' => 'Empresa Tenant SAC',
@@ -79,7 +80,7 @@ it('rechaza usuarios asociados a un tenant aunque tengan el rol administrativo',
     ]);
     $usuario->assignRole(Role::findOrCreate('super_admin', 'web'));
 
-    $this->actingAs($usuario)->get('/admin')->assertForbidden();
+    $this->actingAs($usuario)->get('/admin')->assertRedirect('/app');
 });
 
 it('permite al super administrador interno usar los recursos iniciales', function () {
