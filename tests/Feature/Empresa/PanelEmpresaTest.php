@@ -2,7 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Filament\Empresa\Resources\Clientes\Pages\CreateCliente;
+use App\Filament\Empresa\Resources\Clientes\Pages\ListClientes;
 use App\Filament\Empresa\Resources\Comprobantes\Pages\ListComprobantes;
+use App\Models\Cliente;
 use App\Models\Empresa;
 use App\Models\Usuario;
 use Filament\Facades\Filament;
@@ -47,6 +50,7 @@ it('permite a un usuario de empresa entrar a su panel', function () {
 
     $this->get('/app')->assertOk();
     $this->get('/app/comprobantes')->assertOk();
+    $this->get('/app/clientes')->assertOk();
 });
 
 it('un usuario de empresa ve solo los comprobantes de su propia empresa', function () {
@@ -99,4 +103,85 @@ it('un super_admin sin empresa no puede entrar al panel de empresa', function ()
     $usuario->assignRole(Role::findOrCreate('super_admin', 'web'));
 
     $this->actingAs($usuario)->get('/app')->assertForbidden();
+});
+
+it('crea un cliente desde el panel de empresa sin pedir la empresa (se resuelve del usuario autenticado)', function () {
+    $empresa = Empresa::query()->create([
+        'ruc' => '20100070970',
+        'razon_social' => 'Empresa Panel Clientes SAC',
+        'estado' => 'ACTIVA',
+    ]);
+    actuarComoUsuarioEmpresa($empresa->id);
+
+    Livewire::test(CreateCliente::class)
+        ->fillForm([
+            'tipo_documento' => '1',
+            'numero_documento' => '45678912',
+            'razon_social' => 'Juan Pérez',
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    $this->assertDatabaseHas('clientes', [
+        'empresa_id' => $empresa->id,
+        'tipo_documento' => '1',
+        'numero_documento' => '45678912',
+        'razon_social' => 'Juan Pérez',
+    ]);
+});
+
+it('un usuario de empresa ve solo los clientes de su propia empresa', function () {
+    $empresaA = Empresa::query()->create([
+        'ruc' => '20100070970',
+        'razon_social' => 'Empresa A SAC',
+        'estado' => 'ACTIVA',
+    ]);
+    $empresaB = Empresa::query()->create([
+        'ruc' => '20100070971',
+        'razon_social' => 'Empresa B SAC',
+        'estado' => 'ACTIVA',
+    ]);
+
+    $clienteDeA = Cliente::query()->create([
+        'empresa_id' => $empresaA->id,
+        'tipo_documento' => '6',
+        'numero_documento' => '20100070972',
+        'razon_social' => 'Cliente de A',
+    ]);
+    Cliente::query()->create([
+        'empresa_id' => $empresaB->id,
+        'tipo_documento' => '6',
+        'numero_documento' => '20100070973',
+        'razon_social' => 'Cliente de B',
+    ]);
+
+    actuarComoUsuarioEmpresa($empresaA->id);
+
+    Livewire::test(ListClientes::class)
+        ->assertCanSeeTableRecords([$clienteDeA])
+        ->assertCountTableRecords(1);
+});
+
+it('nunca permite ver por URL directa el cliente de otra empresa', function () {
+    $empresaA = Empresa::query()->create([
+        'ruc' => '20100070970',
+        'razon_social' => 'Empresa A SAC',
+        'estado' => 'ACTIVA',
+    ]);
+    $empresaB = Empresa::query()->create([
+        'ruc' => '20100070971',
+        'razon_social' => 'Empresa B SAC',
+        'estado' => 'ACTIVA',
+    ]);
+
+    $clienteDeB = Cliente::query()->create([
+        'empresa_id' => $empresaB->id,
+        'tipo_documento' => '6',
+        'numero_documento' => '20100070973',
+        'razon_social' => 'Cliente de B',
+    ]);
+
+    actuarComoUsuarioEmpresa($empresaA->id);
+
+    $this->get("/app/clientes/{$clienteDeB->id}/edit")->assertNotFound();
 });

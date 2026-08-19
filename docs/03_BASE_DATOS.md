@@ -87,6 +87,17 @@ ALTER TABLE series ADD CONSTRAINT series_unicas
 | usuario_sol_cifrado, clave_sol_cifrada | text | cifrados |
 | estado | varchar | ACTIVA / INACTIVA |
 
+### clientes (`modules/Clientes/`, implementado 2026-08-19)
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| id | uuid | |
+| empresa_id | uuid FK | |
+| tipo_documento | varchar(1) | catálogo 1 SUNAT (0/1/4/6/7) |
+| numero_documento | varchar(15) | UNIQUE (empresa_id, tipo_documento, numero_documento) |
+| razon_social | varchar | |
+| direccion, email | varchar | nullable |
+
 ### oauth_clients (Laravel Passport + columnas propias)
 
 No hay tabla `integraciones_api` separada — la integración de una empresa con la API **es** un `oauth_client` de Passport. Migraciones publicadas del paquete (`oauth_clients`, `oauth_access_tokens`, `oauth_refresh_tokens`, `oauth_auth_codes`, `oauth_device_codes`, corridas antes de `comprobantes`/`auditorias` porque ambas tienen FK a `oauth_clients`), con `oauth_clients` editada directamente para agregar las columnas propias — no como parche posterior, ya nace así:

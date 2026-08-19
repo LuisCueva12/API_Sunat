@@ -33,6 +33,7 @@
         "psr-4": {
             "App\\": "app/",
             "Modules\\Facturacion\\": "modules/Facturacion/",
+            "Modules\\Clientes\\": "modules/Clientes/",
             "Database\\Factories\\": "database/factories/",
             "Database\\Seeders\\": "database/seeders/"
         }

@@ -2,10 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Filament\Admin\Resources\Clientes\Pages\CreateCliente;
 use App\Filament\Admin\Resources\Comprobantes\Pages\ListComprobantes;
 use App\Filament\Admin\Resources\Empresas\Pages\CreateEmpresa;
 use App\Filament\Admin\Resources\Series\Pages\CreateSerie;
 use App\Jobs\ProcesarComprobante;
+use App\Models\Cliente;
 use App\Models\Comprobante;
 use App\Models\Empresa;
 use App\Models\Serie;
@@ -97,6 +99,7 @@ it('permite al super administrador interno usar los recursos iniciales', functio
     $this->get('/admin/establecimientos')->assertOk();
     $this->get('/admin/series')->assertOk();
     $this->get('/admin/comprobantes')->assertOk();
+    $this->get('/admin/clientes')->assertOk();
 });
 
 it('crea el primer administrador con contraseña oculta y rol explícito', function () {
@@ -239,4 +242,53 @@ it('no permite reintentar un comprobante que no está en error desde el panel', 
         ->assertTableActionHidden('reintentar', $comprobante);
 
     Queue::assertNothingPushed();
+});
+
+it('crea un cliente desde el panel usando el caso de uso', function () {
+    actuarComoAdministradorPanel();
+
+    $empresa = Empresa::query()->create([
+        'ruc' => '20100070970',
+        'razon_social' => 'Empresa Clientes SAC',
+        'estado' => 'ACTIVA',
+    ]);
+
+    Livewire::test(CreateCliente::class)
+        ->fillForm([
+            'empresa_id' => $empresa->id,
+            'tipo_documento' => '6',
+            'numero_documento' => '20100070971',
+            'razon_social' => 'Cliente de Prueba SAC',
+            'email' => 'contacto@clienteprueba.pe',
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    $this->assertDatabaseHas('clientes', [
+        'empresa_id' => $empresa->id,
+        'tipo_documento' => '6',
+        'numero_documento' => '20100070971',
+        'razon_social' => 'Cliente de Prueba SAC',
+    ]);
+});
+
+it('muestra una notificación en vez de un 500 al duplicar el documento de un cliente', function () {
+    actuarComoAdministradorPanel();
+
+    $empresa = Empresa::query()->create([
+        'ruc' => '20100070970',
+        'razon_social' => 'Empresa Clientes Duplicados SAC',
+        'estado' => 'ACTIVA',
+    ]);
+
+    Livewire::test(CreateCliente::class)
+        ->fillForm(['empresa_id' => $empresa->id, 'tipo_documento' => '6', 'numero_documento' => '20100070971', 'razon_social' => 'Cliente A'])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    Livewire::test(CreateCliente::class)
+        ->fillForm(['empresa_id' => $empresa->id, 'tipo_documento' => '6', 'numero_documento' => '20100070971', 'razon_social' => 'Cliente B'])
+        ->call('create');
+
+    expect(Cliente::query()->where('empresa_id', $empresa->id)->count())->toBe(1);
 });

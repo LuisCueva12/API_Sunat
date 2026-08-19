@@ -129,4 +129,24 @@ Casos de uso: `CrearEmpresa`, `CrearSerie`, `CrearCertificadoDigital`, `CrearCre
 
 **`GestorClientesOAuth`** (puerto) + `GestorClientesOAuthPassport` (Infrastructure) envuelven `Laravel\Passport\ClientRepository`/`Passport::client()` para crear el `oauth_client` (grant `client_credentials`, `secret` hasheado automáticamente por Passport) y revocarlo. `CrearIntegracionApi` devuelve `ResultadoCrearIntegracionApi { integracion, clientSecret }` — `clientSecret` es la única vez que el valor en texto plano existe fuera de la memoria transitoria del proceso; Passport lo hashea antes de persistirlo (ver [06_SEGURIDAD.md](06_SEGURIDAD.md)). `RevocarIntegracionApi` revoca el cliente **y** todos sus `access_token` ya emitidos — revocar solo el cliente no invalida tokens todavía vigentes (Passport valida revocación a nivel de token, no de cliente).
 
+## Módulo Clientes (`modules/Clientes/`, implementado 2026-08-19)
+
+Primer módulo top-level genuinamente independiente de `Facturacion` (namespace `Modules\Clientes`, no `Modules\Facturacion\Domain\Clientes`). Mismo patrón Domain/Application/Infrastructure, mismas reglas de `deptrac`.
+
+```text
+Cliente                  empresa + tipo de documento + número de documento + razón
+                          social + dirección (nullable) + email (nullable). Agregado
+                          ligero, sin máquina de estados — a diferencia de Comprobante.
+                          UNIQUE (empresa_id, tipo_documento, numero_documento) en BD.
+TipoDocumentoCliente      Catálogo 1 SUNAT (0/1/4/6/7) — deliberadamente duplicado de
+                          Modules\Facturacion\Domain\ValueObjects\TipoDocumentoIdentidad,
+                          no importado: deptrac impide que el Domain de un módulo
+                          dependa del Domain de otro, cada bounded context define su
+                          propio vocabulario aunque el catálogo subyacente coincida.
+```
+
+Casos de uso: `CrearCliente`, `ActualizarCliente` (`Modules\Clientes\Application\CasosDeUso`). A diferencia de `TipoDocumentoCliente`, **sí** reutilizan `RepositorioEmpresa`, `GeneradorId` y `EmpresaInvalidaException` de `Modules\Facturacion\Domain` — la regla de `deptrac` es por capa (Application puede depender de cualquier Domain), no por módulo; reimplementar la validación de empresa activa o la generación de IDs en cada módulo nuevo sería duplicación real, no la trivial de un enum de 5 valores.
+
+Expuesto en ambos paneles Filament (`/admin` con selector de empresa; `/app` con `empresa_id` resuelto del usuario autenticado, nunca de un campo del formulario — mismo principio que ya aplica en toda la plataforma). Todavía no conectado al flujo de emisión de comprobantes (no autocompleta el receptor); el snapshot desnormalizado en `comprobantes.receptor_*` sigue siendo la fuente de verdad fiscal, `Cliente` es solo un catálogo de conveniencia para uso futuro.
+
 **Sin endpoints HTTP todavía**: estas altas son intencionalmente solo Domain+Application+Infrastructure por ahora. Exponerlas en la API pública V1 (autenticada con la propia integración del tenant) no tiene sentido para "crear la primera empresa/integración" — es un problema de huevo y gallina. La forma correcta es un área administrativa autenticada aparte (Fase 8, panel — ver [01_ARQUITECTURA.md](01_ARQUITECTURA.md) §10), todavía no construida. Hasta entonces, estos casos de uso se invocan desde comandos de consola/tinker o tests, nunca desde una ruta pública sin autenticación.

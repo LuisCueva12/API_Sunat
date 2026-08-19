@@ -7,20 +7,27 @@ parameters:
     - '#.*Test\.php$#'
 
   layers:
+    # Regex genérico (no solo Modules\Facturacion\*) — cubre cualquier módulo
+    # nuevo bajo modules/ (ej. Modules\Clientes\*) con la misma disciplina de
+    # capas sin tener que tocar este archivo cada vez que se agrega uno.
+    # Consecuencia consciente: Domain: [] más abajo implica que un módulo NO
+    # puede importar el Domain de otro módulo — cada bounded context define
+    # su propio vocabulario, aunque se vea parecido (ver Cliente/TipoDocumentoCliente
+    # vs Comprobante/TipoDocumentoIdentidad).
     - name: Domain
       collectors:
         - type: classNameRegex
-          value: '#^Modules\\Facturacion\\Domain\\.*#'
+          value: '#^Modules\\[A-Za-z]+\\Domain\\.*#'
 
     - name: Application
       collectors:
         - type: classNameRegex
-          value: '#^Modules\\Facturacion\\Application\\.*#'
+          value: '#^Modules\\[A-Za-z]+\\Application\\.*#'
 
     - name: Infrastructure
       collectors:
         - type: classNameRegex
-          value: '#^Modules\\Facturacion\\Infrastructure\\.*#'
+          value: '#^Modules\\[A-Za-z]+\\Infrastructure\\.*#'
 
     # Modelos Eloquent: persistencia pura en app/Models por convención
     # Laravel/Filament (ver docs/01_ARQUITECTURA.md §2), no la entidad de

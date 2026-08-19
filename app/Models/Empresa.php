@@ -76,4 +76,10 @@ class Empresa extends Model
     {
         return $this->morphMany(Client::class, 'owner');
     }
+
+    /** @return HasMany<Cliente, $this> */
+    public function clientes(): HasMany
+    {
+        return $this->hasMany(Cliente::class);
+    }
 }
