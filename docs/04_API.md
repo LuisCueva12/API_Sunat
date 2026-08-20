@@ -36,7 +36,7 @@ Error (nunca stack traces ni excepciones internas):
 | GET | `/comprobantes/{id}/estado` | — | polling barato: solo estado + timestamps |
 | GET | `/comprobantes/{id}/eventos` | — | trazabilidad completa |
 | POST | `/comprobantes/{id}/reintentar` | — | 409 si el estado no es `ERROR` |
-| GET | `/comprobantes/{id}/xml` \| `/cdr` \| `/pdf` | — | descarga desde disco privado |
+| GET | `/comprobantes/{id}/xml` \| `/cdr` \| `/pdf` | — | planificado; todavía no expuesto por API |
 | GET | `/empresas/actual` | — | info de la empresa dueña de la integración autenticada |
 | GET | `/up` | — | health check nativo de Laravel |
 
@@ -45,6 +45,8 @@ Emisión específica por tipo (contrato de entrada difiere genuinamente) + consu
 En los cuatro endpoints de emisión, `receptor_razon_social` es opcional. Si se omite o llega vacío, el caso de uso busca un cliente de la misma empresa por `receptor_tipo_documento` + `receptor_numero_documento` y copia su razón social al snapshot del comprobante. Si no existe, responde `422` con código `COMPROBANTE_INVALIDO`. Cuando se envía una razón social no vacía, esta prevalece y no se consulta el maestro de clientes.
 
 Webhooks: gestión solo desde el panel en V1, no expuesta por API todavía (se agrega si un cliente real lo pide — evita superficie sin uso).
+
+La representación PDF sí está disponible en el panel Filament para comprobantes aceptados. Se genera desde el XML firmado, se guarda en almacenamiento privado y se entrega mediante una acción autenticada y acotada a la empresa. Su endpoint API queda pendiente hasta definir el contrato de descarga de XML, CDR y PDF como conjunto.
 
 ## Idempotencia
 

@@ -9,4 +9,6 @@ interface AlmacenPrivado
     public function guardar(string $ruta, string $contenido): void;
 
     public function leer(string $ruta): string;
+
+    public function existe(string $ruta): bool;
 }

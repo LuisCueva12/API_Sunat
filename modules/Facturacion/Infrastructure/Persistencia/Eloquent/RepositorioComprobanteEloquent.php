@@ -37,6 +37,10 @@ final class RepositorioComprobanteEloquent implements RepositorioComprobante
 
         $totales = $comprobante->totales();
         $referencia = $comprobante->referencia();
+        $establecimiento = $empresa->establecimientos()
+            ->orderByDesc('es_principal')
+            ->orderBy('codigo')
+            ->first();
 
         $fila = ComprobanteEloquent::query()->create([
             'id' => $comprobante->id(),
@@ -64,6 +68,12 @@ final class RepositorioComprobanteEloquent implements RepositorioComprobante
                 'ruc' => $empresa->ruc,
                 'razon_social' => $empresa->razon_social,
                 'nombre_comercial' => $empresa->nombre_comercial,
+                'direccion' => $establecimiento?->direccion,
+                'ubigeo' => $establecimiento?->ubigeo,
+                'codigo_local' => $establecimiento === null ? '0000' : $establecimiento->codigo,
+                'departamento' => $establecimiento?->departamento,
+                'provincia' => $establecimiento?->provincia,
+                'distrito' => $establecimiento?->distrito,
             ],
         ]);
 

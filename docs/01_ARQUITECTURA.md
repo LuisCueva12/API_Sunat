@@ -127,7 +127,10 @@ ProcesarComprobante → PROCESANDO → Mapeador → GeneradorXmlGreenter
   → FirmadorXmlGreenter → ZIP
 EnviarComprobanteSunat → ClienteSunatGreenter → SUNAT (beta/producción)
 ProcesarRespuestaSunat → ParserCdrGreenter → ACEPTADO |
-  ACEPTADO_CON_OBSERVACIONES | RECHAZADO → CDR + PDF + hashes
+  ACEPTADO_CON_OBSERVACIONES | RECHAZADO → CDR + hashes
+
+Comprobante aceptado → GeneradorRepresentacionImpresa → PDF A4 + QR SUNAT
+  → almacenamiento privado versionado → descarga autenticada desde Filament
 EnviarWebhook → payload firmado HMAC → reintentos con backoff
   (nunca bloquea ni afecta el estado del comprobante)
 ```
@@ -173,7 +176,7 @@ No se agregan paquetes para UUID v7, rate limiting, cliente HTTP, cifrado — La
 
 **Greenter**: modelado UBL, generación XML 2.1, firma XML-DSig, comunicación SOAP con SUNAT, parseo de CDR, catálogos SUNAT como constantes.
 
-**Nosotros**: dominio de negocio y validación, mapeo dominio↔Greenter, numeración concurrente, persistencia/estados/eventos/auditoría, cifrado de certificados/credenciales, orquestación async/reintentos, idempotencia, webhooks, **generación de PDF (Greenter no lo hace)**, selección de certificado/credenciales por empresa, panel, API, auth, rate limiting.
+**Nosotros**: dominio de negocio y validación, mapeo dominio↔Greenter, numeración concurrente, persistencia/estados/eventos/auditoría, cifrado de certificados/credenciales, orquestación async/reintentos, idempotencia, webhooks, **generación de PDF propia con Dompdf**, selección de certificado/credenciales por empresa, panel, API, auth, rate limiting. Greenter dispone de un paquete de reportes, pero depende de `wkhtmltopdf`; no se usa en este proyecto.
 
 ## 10. Plan de fases
 
@@ -208,12 +211,11 @@ Guías de remisión, detracciones, retenciones, percepciones, documentos especia
 ## 13. Riesgos abiertos a verificar antes de cada fase relevante
 
 - Formato vigente de series para NC/ND (Fase 5).
-- Contenido exacto del QR en representación impresa (antes de construir el PDF, Fase 5+).
 - Regla de redondeo tributario exacta esperada por SUNAT.
 - Certificado de producción emitido para el RUC del contribuyente — BETA admite el autofirmado generado por `facturacion:preparar-beta`, según el manual oficial de SUNAT.
 - `ext-soap`, `ext-redis` e `igbinary` están instalados permanentemente en el entorno de desarrollo; PostgreSQL y Redis operan en los puertos estándar `5432` y `6379`.
 
-Resueltos y ya no son riesgos abiertos (ver [05_SUNAT.md](05_SUNAT.md) para el detalle): nombre/versión de `greenter/greenter`, si requiere `ext-soap`, rangos de código CDR (código `0` = aceptado, con notas = observaciones, ≠0 = rechazado — confirmado por la forma de `CdrResponse`), endpoints beta/producción reales.
+Resueltos y ya no son riesgos abiertos (ver [05_SUNAT.md](05_SUNAT.md) para el detalle): nombre/versión de `greenter/greenter`, si requiere `ext-soap`, rangos de código CDR (código `0` = aceptado, con notas = observaciones, ≠0 = rechazado — confirmado por la forma de `CdrResponse`), endpoints beta/producción reales y contenido normativo del QR de la representación impresa.
 
 ## 14. Evolución a plataforma SaaS multiempresa (2026-08-19)
 

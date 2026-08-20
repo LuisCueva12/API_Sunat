@@ -5,15 +5,56 @@ declare(strict_types=1);
 namespace App\Filament\Support;
 
 use App\Models\Comprobante;
+use App\Services\Comprobantes\GeneradorRepresentacionImpresa;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Facades\Log;
 use Modules\Facturacion\Application\CasosDeUso\ReintentarComprobante;
 use Modules\Facturacion\Domain\Excepciones\ComprobanteNoEncontradoException;
 use Modules\Facturacion\Domain\Excepciones\TransicionEstadoInvalidaException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+use Throwable;
 
 final class ComprobanteAcciones
 {
+    public static function descargarPdf(): Action
+    {
+        return Action::make('descargar_pdf')
+            ->label('PDF / Imprimir')
+            ->icon(Heroicon::OutlinedArrowDownTray)
+            ->color('primary')
+            ->visible(fn (Comprobante $record): bool => in_array($record->estado, ['ACEPTADO', 'ACEPTADO_CON_OBSERVACIONES'], true))
+            ->action(function (Comprobante $record): ?StreamedResponse {
+                try {
+                    $representacion = app(GeneradorRepresentacionImpresa::class)->generar($record);
+                } catch (Throwable $e) {
+                    Log::error('No se pudo generar la representación impresa.', [
+                        'comprobante_id' => $record->id,
+                        'empresa_id' => $record->empresa_id,
+                        'excepcion' => $e::class,
+                        'mensaje' => $e->getMessage(),
+                    ]);
+
+                    Notification::make()
+                        ->title('El PDF todavía no está disponible')
+                        ->body('No pudimos preparar la representación impresa. Intenta nuevamente o solicita ayuda.')
+                        ->danger()
+                        ->send();
+
+                    return null;
+                }
+
+                return response()->streamDownload(
+                    static function () use ($representacion): void {
+                        echo $representacion->contenido;
+                    },
+                    $representacion->nombreArchivo,
+                    ['Content-Type' => 'application/pdf'],
+                );
+            });
+    }
+
     public static function reintentar(): Action
     {
         return Action::make('reintentar')

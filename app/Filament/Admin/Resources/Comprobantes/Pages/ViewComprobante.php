@@ -17,6 +17,7 @@ final class ViewComprobante extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            ComprobanteAcciones::descargarPdf(),
             ComprobanteAcciones::reintentar(),
         ];
     }

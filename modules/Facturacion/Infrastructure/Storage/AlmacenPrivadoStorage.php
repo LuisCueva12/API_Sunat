@@ -19,6 +19,11 @@ final class AlmacenPrivadoStorage implements AlmacenPrivado
         return Storage::disk($this->disco())->get($ruta) ?? '';
     }
 
+    public function existe(string $ruta): bool
+    {
+        return Storage::disk($this->disco())->exists($ruta);
+    }
+
     private function disco(): string
     {
         return (string) config('facturacion.storage_disk');

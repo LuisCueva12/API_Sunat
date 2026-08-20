@@ -89,7 +89,7 @@ Verificado leyendo `vendor/greenter/greenter` directamente, no asumido:
 
 - Paquete correcto: `composer require greenter/greenter` (v5.3.0 al momento de instalar). Es un meta-paquete que agrupa `greenter/core`, `greenter/ws`, `greenter/xmldsig`, `greenter/xml`, etc.
 - **`ext-soap` es requisito duro para el envío** (`greenter/ws` lo declara y su cliente extiende `\SoapClient`). La generación y firma local ya no dependen de `Greenter\See`: usan `InvoiceBuilder` y `SignedXml`, por lo que sus pruebas offline funcionan sin cargar SOAP.
-- **Greenter sí genera PDF** (representación impresa) vía `packages/htmltopdf` + `packages/report` (usa `twig/twig` + `mikehaertl/phpwkhtmltopdf`, que a su vez necesita el binario `wkhtmltopdf` instalado en el sistema). Esto corrige lo que dije en la primera respuesta de este proyecto ("Greenter no genera PDF") — sí puede, con una dependencia de sistema adicional a evaluar cuando se llegue a esa pieza.
+- **Greenter sí puede generar PDF**, pero requiere `wkhtmltopdf`. Este proyecto usa la dependencia PHP ya instalada `barryvdh/laravel-dompdf`, evitando un binario adicional y manteniendo la representación bajo nuestro control.
 - Endpoints SUNAT reales (`Greenter\Ws\Services\SunatEndpoints`):
   - `FE_BETA` = `https://e-beta.sunat.gob.pe/ol-ti-itcpfegem-beta/billService`
   - `FE_PRODUCCION` = `https://e-factura.sunat.gob.pe/ol-ti-itcpfegem/billService`
@@ -103,7 +103,7 @@ Verificado leyendo `vendor/greenter/greenter` directamente, no asumido:
 
 - [ ] Envío individual de boleta (`sendBill`) vs. resumen diario (`sendSummary`) — vigencia normativa actual. Parcialmente investigado el 2026-08-19: a nivel técnico Greenter sí soporta `sendSummary` (documento `Greenter\Model\Summary\Summary`, `SummaryBuilder`) y la "Comunicación de Baja" para anular una boleta ya emitida sin Nota de Crédito (documento `Greenter\Model\Voided\Voided`, `VoidedBuilder`, enviado con `See::send()` igual que una factura), con resultado asíncrono consultable vía `See::getStatus($ticket)`. Falta confirmar con la fuente oficial (manual SEE - Del Contribuyente) la regla exacta de plazo para presentar la baja — no implementado todavía, no se debe adivinar el plazo.
 - [ ] Formato de series para NC/ND vigente.
-- [ ] Contenido exacto requerido del QR en la representación impresa.
+- [x] Contenido del QR de la representación impresa. Resuelto con el Anexo C de la RS 113-2018/SUNAT: RUC del emisor, tipo de comprobante, serie, correlativo, IGV, total, fecha, tipo y número de documento del adquirente y `DigestValue`, separados por `|`, en UTF-8 y nivel de corrección Q. La implementación extrae el resumen del XML firmado y no lo recalcula. Fuente oficial: <https://www.sunat.gob.pe/legislacion/superin/2018/anexoC-113-2018.pdf>.
 - [ ] Regla de redondeo tributario esperada por SUNAT.
 - [ ] **Verificación de titularidad del certificado**: SUNAT exige que el certificado digital corresponda al RUC del emisor, pero el campo/OID exacto del Subject donde SUNAT espera encontrar ese RUC (y si además exige que la entidad emisora del certificado esté acreditada) no está confirmado con la especificación oficial. `AnalizadorCertificadoDigital` (`modules/Facturacion/Domain/Certificados/`) hoy solo valida que el certificado sea X.509 válido y no esté vencido — **no** compara el RUC del titular contra el de la empresa. Implementar ese chequeo sin la fuente oficial confirmada sería adivinar una regla tributaria, así que se deja pendiente explícitamente en vez de fingir una validación completa (ver [02_DOMINIO.md](02_DOMINIO.md)).
 

@@ -6,15 +6,18 @@ use App\Filament\Empresa\Resources\Clientes\Pages\CreateCliente;
 use App\Filament\Empresa\Resources\Clientes\Pages\ListClientes;
 use App\Filament\Empresa\Resources\Comprobantes\Pages\CreateComprobante;
 use App\Filament\Empresa\Resources\Comprobantes\Pages\ListComprobantes;
+use App\Filament\Empresa\Resources\Comprobantes\Pages\ViewComprobante;
 use App\Jobs\ProcesarComprobante;
 use App\Models\Cliente;
 use App\Models\Comprobante;
+use App\Models\ComprobanteItem;
 use App\Models\ConceptoFrecuente;
 use App\Models\Empresa;
 use App\Models\Serie;
 use App\Models\Usuario;
 use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
@@ -136,6 +139,67 @@ it('muestra un error comprensible sin exponer el diagnóstico técnico al factur
         ->assertDontSee('/var/www/app.php')
         ->assertDontSee('Último error')
         ->assertDontSee('Trazabilidad SUNAT');
+});
+
+it('genera y descarga desde Filament el PDF privado de un comprobante aceptado', function () {
+    Storage::fake('local');
+    config()->set('facturacion.storage_disk', 'local');
+
+    $empresa = Empresa::query()->create([
+        'ruc' => '20100070970',
+        'razon_social' => 'Empresa PDF SAC',
+        'estado' => 'ACTIVA',
+    ]);
+    $comprobante = crearComprobantePanel($empresa->id, [
+        'estado' => 'ACEPTADO',
+        'snapshot_emisor' => [
+            'ruc' => '20100070970',
+            'razon_social' => 'Empresa PDF SAC',
+            'nombre_comercial' => 'Empresa PDF',
+        ],
+    ]);
+    ComprobanteItem::query()->create([
+        'comprobante_id' => $comprobante->id,
+        'numero_orden' => 1,
+        'descripcion' => 'Mantenimiento mensual',
+        'unidad_medida' => 'ZZ',
+        'cantidad' => '1.000',
+        'valor_unitario' => '100.00',
+        'precio_unitario' => '118.00',
+        'tipo_afectacion_igv' => '10',
+        'monto_igv' => '18.00',
+        'monto_valor_venta' => '100.00',
+        'descuento' => '0.00',
+    ]);
+    $rutaBase = "empresas/{$empresa->id}/comprobantes/{$comprobante->fecha_emision->format('Y/m')}/{$comprobante->id}";
+    Storage::disk('local')->put("{$rutaBase}/comprobante.xml", <<<'XML'
+        <?xml version="1.0" encoding="UTF-8"?>
+        <Invoice xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+            <ds:Signature><ds:SignedInfo><ds:Reference><ds:DigestValue>abcDEF123+/=</ds:DigestValue></ds:Reference></ds:SignedInfo></ds:Signature>
+        </Invoice>
+        XML);
+    actuarComoUsuarioEmpresa($empresa->id);
+
+    Livewire::test(ViewComprobante::class, ['record' => $comprobante->id])
+        ->assertActionVisible('descargar_pdf')
+        ->callAction('descargar_pdf')
+        ->assertFileDownloaded('20100070970-01-F001-1.pdf');
+
+    Storage::disk('local')->assertExists("{$rutaBase}/representacion-v1.pdf");
+    expect(Storage::disk('local')->get("{$rutaBase}/representacion-v1.pdf"))->toStartWith('%PDF-');
+});
+
+it('no ofrece representación impresa antes de la aceptación de SUNAT', function () {
+    $empresa = Empresa::query()->create([
+        'ruc' => '20100070970',
+        'razon_social' => 'Empresa Pendiente SAC',
+        'estado' => 'ACTIVA',
+    ]);
+    $comprobante = crearComprobantePanel($empresa->id, ['estado' => 'PROCESANDO']);
+    actuarComoUsuarioEmpresa($empresa->id);
+
+    Livewire::test(ViewComprobante::class, ['record' => $comprobante->id])
+        ->assertActionHidden('descargar_pdf');
 });
 
 it('un super_admin sin empresa no puede entrar al panel de empresa y es redirigido al suyo', function () {
