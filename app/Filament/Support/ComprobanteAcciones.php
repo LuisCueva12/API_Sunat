@@ -6,6 +6,7 @@ namespace App\Filament\Support;
 
 use App\Models\Comprobante;
 use App\Services\Comprobantes\GeneradorRepresentacionImpresa;
+use App\Services\Comprobantes\XmlFirmadoNoDisponible;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
@@ -21,13 +22,27 @@ final class ComprobanteAcciones
     public static function descargarPdf(): Action
     {
         return Action::make('descargar_pdf')
-            ->label('PDF / Imprimir')
+            ->label('Ticket / Imprimir')
             ->icon(Heroicon::OutlinedArrowDownTray)
             ->color('primary')
             ->visible(fn (Comprobante $record): bool => in_array($record->estado, ['ACEPTADO', 'ACEPTADO_CON_OBSERVACIONES'], true))
             ->action(function (Comprobante $record): ?StreamedResponse {
                 try {
                     $representacion = app(GeneradorRepresentacionImpresa::class)->generar($record);
+                } catch (XmlFirmadoNoDisponible $e) {
+                    Log::warning('No se encontró el XML firmado para generar la representación impresa.', [
+                        'comprobante_id' => $record->id,
+                        'empresa_id' => $record->empresa_id,
+                        'mensaje' => $e->getMessage(),
+                    ]);
+
+                    Notification::make()
+                        ->title('No encontramos el XML firmado')
+                        ->body('Este comprobante no conserva el archivo necesario para crear un PDF válido. Solicita ayuda para recuperarlo.')
+                        ->danger()
+                        ->send();
+
+                    return null;
                 } catch (Throwable $e) {
                     Log::error('No se pudo generar la representación impresa.', [
                         'comprobante_id' => $record->id,

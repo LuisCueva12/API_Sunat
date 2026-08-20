@@ -129,7 +129,7 @@ EnviarComprobanteSunat → ClienteSunatGreenter → SUNAT (beta/producción)
 ProcesarRespuestaSunat → ParserCdrGreenter → ACEPTADO |
   ACEPTADO_CON_OBSERVACIONES | RECHAZADO → CDR + hashes
 
-Comprobante aceptado → GeneradorRepresentacionImpresa → PDF A4 + QR SUNAT
+Comprobante aceptado → GeneradorRepresentacionImpresa → ticket PDF 80 mm + QR SUNAT
   → almacenamiento privado versionado → descarga autenticada desde Filament
 EnviarWebhook → payload firmado HMAC → reintentos con backoff
   (nunca bloquea ni afecta el estado del comprobante)

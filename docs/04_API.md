@@ -46,7 +46,7 @@ En los cuatro endpoints de emisión, `receptor_razon_social` es opcional. Si se 
 
 Webhooks: gestión solo desde el panel en V1, no expuesta por API todavía (se agrega si un cliente real lo pide — evita superficie sin uso).
 
-La representación PDF sí está disponible en el panel Filament para comprobantes aceptados. Se genera desde el XML firmado, se guarda en almacenamiento privado y se entrega mediante una acción autenticada y acotada a la empresa. Su endpoint API queda pendiente hasta definir el contrato de descarga de XML, CDR y PDF como conjunto.
+La representación PDF en formato ticket térmico de 80 mm sí está disponible en el panel Filament para comprobantes aceptados. Se genera desde el XML firmado, se guarda en almacenamiento privado y se entrega mediante una acción autenticada y acotada a la empresa. Su endpoint API queda pendiente hasta definir el contrato de descarga de XML, CDR y PDF como conjunto.
 
 ## Idempotencia
 

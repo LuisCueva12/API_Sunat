@@ -20,6 +20,12 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
+use Modules\Facturacion\Domain\Empresa\DatosEmisor;
+use Modules\Facturacion\Domain\Empresa\DatosSunatEmpresa;
+use Modules\Facturacion\Domain\Puertos\GeneradorXmlFirmado;
+use Modules\Facturacion\Domain\Puertos\ProveedorDatosSunat;
+use Modules\Facturacion\Domain\ValueObjects\CertificadoDigital;
+use Modules\Facturacion\Domain\ValueObjects\Ruc;
 use Spatie\Permission\Models\Role;
 
 function actuarComoUsuarioEmpresa(string $empresaId, string $email = 'cliente@example.test'): Usuario
@@ -183,10 +189,13 @@ it('genera y descarga desde Filament el PDF privado de un comprobante aceptado',
     Livewire::test(ViewComprobante::class, ['record' => $comprobante->id])
         ->assertActionVisible('descargar_pdf')
         ->callAction('descargar_pdf')
-        ->assertFileDownloaded('20100070970-01-F001-1.pdf');
+        ->assertFileDownloaded('20100070970-01-F001-1-ticket.pdf');
 
-    Storage::disk('local')->assertExists("{$rutaBase}/representacion-v1.pdf");
-    expect(Storage::disk('local')->get("{$rutaBase}/representacion-v1.pdf"))->toStartWith('%PDF-');
+    Storage::disk('local')->assertExists("{$rutaBase}/representacion-ticket-v3.pdf");
+    expect(Storage::disk('local')->get("{$rutaBase}/representacion-ticket-v3.pdf"))
+        ->toStartWith('%PDF-')
+        ->toContain('/MediaBox [0.000 0.000 226.770')
+        ->toContain('/Count 1');
 });
 
 it('no ofrece representación impresa antes de la aceptación de SUNAT', function () {
@@ -200,6 +209,83 @@ it('no ofrece representación impresa antes de la aceptación de SUNAT', functio
 
     Livewire::test(ViewComprobante::class, ['record' => $comprobante->id])
         ->assertActionHidden('descargar_pdf');
+});
+
+it('recupera un XML perdido solo cuando coincide exactamente con el hash registrado', function () {
+    Storage::fake('local');
+    config()->set('facturacion.storage_disk', 'local');
+
+    $xmlFirmado = <<<'XML'
+        <?xml version="1.0" encoding="UTF-8"?>
+        <Invoice xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+            <ds:Signature><ds:SignedInfo><ds:Reference><ds:DigestValue>resumenRecuperado123=</ds:DigestValue></ds:Reference></ds:SignedInfo></ds:Signature>
+        </Invoice>
+        XML;
+    $empresa = Empresa::query()->create([
+        'ruc' => '20100070970',
+        'razon_social' => 'Empresa Recuperación SAC',
+        'estado' => 'ACTIVA',
+    ]);
+    $comprobante = crearComprobantePanel($empresa->id, [
+        'xml_sha256' => hash('sha256', $xmlFirmado),
+    ]);
+    $datosSunat = new DatosSunatEmpresa(
+        new DatosEmisor(new Ruc('20100070970'), 'Empresa Recuperación SAC', null, null, null),
+        new CertificadoDigital('certificado-de-prueba'),
+        'usuario',
+        'clave',
+        'https://example.test',
+    );
+    $proveedor = Mockery::mock(ProveedorDatosSunat::class);
+    $proveedor->shouldReceive('paraEmpresa')->once()->with($empresa->id, 'BETA')->andReturn($datosSunat);
+    app()->instance(ProveedorDatosSunat::class, $proveedor);
+    $generadorXml = Mockery::mock(GeneradorXmlFirmado::class);
+    $generadorXml->shouldReceive('generar')->once()->andReturn($xmlFirmado);
+    app()->instance(GeneradorXmlFirmado::class, $generadorXml);
+    actuarComoUsuarioEmpresa($empresa->id);
+
+    Livewire::test(ViewComprobante::class, ['record' => $comprobante->id])
+        ->callAction('descargar_pdf')
+        ->assertFileDownloaded('20100070970-01-F001-1-ticket.pdf');
+
+    $rutaBase = "empresas/{$empresa->id}/comprobantes/{$comprobante->fecha_emision->format('Y/m')}/{$comprobante->id}";
+    expect(Storage::disk('local')->get("{$rutaBase}/comprobante.xml"))->toBe($xmlFirmado);
+});
+
+it('no reconstruye el PDF si el XML recuperado no coincide con el hash original', function () {
+    Storage::fake('local');
+    config()->set('facturacion.storage_disk', 'local');
+
+    $empresa = Empresa::query()->create([
+        'ruc' => '20100070970',
+        'razon_social' => 'Empresa Integridad SAC',
+        'estado' => 'ACTIVA',
+    ]);
+    $comprobante = crearComprobantePanel($empresa->id, [
+        'xml_sha256' => str_repeat('a', 64),
+    ]);
+    $datosSunat = new DatosSunatEmpresa(
+        new DatosEmisor(new Ruc('20100070970'), 'Empresa Integridad SAC', null, null, null),
+        new CertificadoDigital('certificado-de-prueba'),
+        'usuario',
+        'clave',
+        'https://example.test',
+    );
+    $proveedor = Mockery::mock(ProveedorDatosSunat::class);
+    $proveedor->shouldReceive('paraEmpresa')->twice()->andReturn($datosSunat);
+    app()->instance(ProveedorDatosSunat::class, $proveedor);
+    $generadorXml = Mockery::mock(GeneradorXmlFirmado::class);
+    $generadorXml->shouldReceive('generar')->twice()->andReturn('<Invoice>alterado</Invoice>');
+    app()->instance(GeneradorXmlFirmado::class, $generadorXml);
+    actuarComoUsuarioEmpresa($empresa->id);
+
+    Livewire::test(ViewComprobante::class, ['record' => $comprobante->id])
+        ->callAction('descargar_pdf')
+        ->assertNotified('No encontramos el XML firmado');
+
+    $rutaBase = "empresas/{$empresa->id}/comprobantes/{$comprobante->fecha_emision->format('Y/m')}/{$comprobante->id}";
+    Storage::disk('local')->assertMissing("{$rutaBase}/comprobante.xml");
+    Storage::disk('local')->assertMissing("{$rutaBase}/representacion-ticket-v3.pdf");
 });
 
 it('un super_admin sin empresa no puede entrar al panel de empresa y es redirigido al suyo', function () {

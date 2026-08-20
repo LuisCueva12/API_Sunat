@@ -17,11 +17,14 @@ final class GeneradorRepresentacionImpresa
 {
     private const DS_NAMESPACE = 'http://www.w3.org/2000/09/xmldsig#';
 
-    private const VERSION_PLANTILLA = 'v1';
+    private const VERSION_PLANTILLA = 'ticket-v3';
+
+    private const ANCHO_TICKET_80_MM = 226.77;
 
     public function __construct(
         private readonly AlmacenPrivado $almacen,
         private readonly CodigoQrSunat $codigoQr,
+        private readonly ObtenedorXmlFirmado $obtenedorXml,
     ) {}
 
     public function generar(Comprobante $comprobante): RepresentacionImpresa
@@ -39,7 +42,7 @@ final class GeneradorRepresentacionImpresa
             return new RepresentacionImpresa($nombreArchivo, $this->almacen->leer($rutaPdf), $rutaPdf);
         }
 
-        $xml = $this->almacen->leer("{$rutaBase}/comprobante.xml");
+        $xml = $this->obtenedorXml->obtener($comprobante, "{$rutaBase}/comprobante.xml");
         $digestValue = $this->extraerDigestValue($xml);
         $cadenaQr = $this->codigoQr->cadena($comprobante, $digestValue);
         $qrPng = $this->codigoQr->png($cadenaQr);
@@ -58,7 +61,12 @@ final class GeneradorRepresentacionImpresa
             'qrBase64' => base64_encode($qrPng),
             'simboloMoneda' => $simboloMoneda,
             'totalEnLetras' => (new NumeroALetras)->toMoney((float) $comprobante->total, 2, $monedaTexto, $fraccionMoneda),
-        ])->setPaper('a4')->setOption('isRemoteEnabled', false);
+        ])->setPaper([
+            0,
+            0,
+            self::ANCHO_TICKET_80_MM,
+            $this->altoTicket($comprobante),
+        ])->setOption('isRemoteEnabled', false);
 
         $contenido = $pdf->output();
 
@@ -148,6 +156,26 @@ final class GeneradorRepresentacionImpresa
             default => 'documento',
         };
 
-        return sprintf('%s-%s-%s-%d.pdf', $ruc, $tipo, $comprobante->serie, $comprobante->correlativo);
+        return sprintf('%s-%s-%s-%d-ticket.pdf', $ruc, $tipo, $comprobante->serie, $comprobante->correlativo);
+    }
+
+    private function altoTicket(Comprobante $comprobante): float
+    {
+        $alto = 446;
+
+        foreach ($comprobante->items as $item) {
+            $lineasDescripcion = max(1, (int) ceil(mb_strlen($item->descripcion) / 30));
+            $alto += 24 + (($lineasDescripcion - 1) * 10);
+        }
+
+        if ($comprobante->receptor_direccion !== null && $comprobante->receptor_direccion !== '') {
+            $alto += 18;
+        }
+
+        if ($comprobante->referencia !== null) {
+            $alto += 30;
+        }
+
+        return min(max($alto, 470), 1800);
     }
 }
