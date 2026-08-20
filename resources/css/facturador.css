@@ -193,10 +193,10 @@ body.facturador-body {
 .btn-fac-primary {
     --bs-btn-color: #fff;
     --bs-btn-bg: var(--fac-primary);
-    --bs-btn-border-color: var(--fac-primary);
+    --bs-btn-border-color: transparent;
     --bs-btn-hover-color: #fff;
     --bs-btn-hover-bg: var(--fac-primary-dark);
-    --bs-btn-hover-border-color: var(--fac-primary-dark);
+    --bs-btn-hover-border-color: transparent;
     --bs-btn-active-bg: var(--fac-primary-dark);
     border-radius: 12px;
     font-weight: 650;
@@ -205,15 +205,14 @@ body.facturador-body {
 }
 .btn-fac-soft {
     color: var(--fac-text);
-    background: #fff;
-    border: 1px solid var(--fac-line);
+    background: var(--fac-soft);
+    border: 0;
     border-radius: 12px;
     font-weight: 550;
     padding: 0.68rem 1rem;
 }
 .btn-fac-soft:hover {
-    background: #f7faf8;
-    border-color: #d6dfda;
+    background: #eef2ef;
 }
 .btn-icon {
     width: 40px;
@@ -282,7 +281,7 @@ body.facturador-body {
     top: calc(100% + 7px);
     inset-inline: 0;
     background: #fff;
-    border: 1px solid rgba(237, 240, 238, 0.9);
+    border: 0;
     border-radius: 13px;
     box-shadow: 0 16px 40px rgba(20, 34, 27, 0.12);
     padding: 6px;
@@ -311,9 +310,9 @@ body.facturador-body {
 
 .fac-line-item {
     border: 0;
-    border-radius: 14px;
-    padding: 16px;
-    background: var(--fac-soft);
+    border-radius: 0;
+    padding: 8px 0 20px;
+    background: transparent;
 }
 .fac-total-box {
     background: #13251d;
@@ -435,7 +434,6 @@ body.facturador-body {
 }
 .fac-alert {
     border: 0;
-    border-radius: 13px;
     font-size: 0.88rem;
     padding: 13px 16px;
 }
@@ -459,7 +457,6 @@ body.facturador-body {
     display: grid;
     place-items: center;
     margin: 0 auto 22px;
-    border-radius: 24px;
     background: var(--fac-primary-soft);
     color: var(--fac-primary);
 }
