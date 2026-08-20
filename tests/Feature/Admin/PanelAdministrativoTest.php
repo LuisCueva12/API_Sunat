@@ -185,6 +185,25 @@ it('lista y muestra el detalle de un comprobante sin errores', function () {
     $this->get("/admin/comprobantes/{$comprobante->id}")->assertOk()->assertSee('Cliente de prueba SAC');
 });
 
+it('conserva el diagnóstico técnico del comprobante únicamente para soporte interno', function () {
+    actuarComoAdministradorPanel();
+
+    $empresa = Empresa::query()->create([
+        'ruc' => '20100070970',
+        'razon_social' => 'Empresa Diagnóstico SAC',
+        'estado' => 'ACTIVA',
+    ]);
+    $comprobante = crearComprobantePanel($empresa->id, [
+        'estado' => 'ERROR',
+        'ultimo_error' => 'SOAP Fault: XML inválido en cac:TaxTotal',
+    ]);
+
+    $this->get("/admin/comprobantes/{$comprobante->id}")
+        ->assertOk()
+        ->assertSee('Último error')
+        ->assertSee('SOAP Fault: XML inválido en cac:TaxTotal');
+});
+
 it('reintenta un comprobante en error desde el panel y encola el envío', function () {
     Queue::fake();
     actuarComoAdministradorPanel();

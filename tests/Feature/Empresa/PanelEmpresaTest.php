@@ -116,6 +116,28 @@ it('nunca permite ver por URL directa el comprobante de otra empresa', function 
     $this->get("/app/comprobantes/{$comprobanteDeB->id}")->assertNotFound();
 });
 
+it('muestra un error comprensible sin exponer el diagnóstico técnico al facturador', function () {
+    $empresa = Empresa::query()->create([
+        'ruc' => '20100070970',
+        'razon_social' => 'Empresa Error SAC',
+        'estado' => 'ACTIVA',
+    ]);
+    $comprobante = crearComprobantePanel($empresa->id, [
+        'estado' => 'ERROR',
+        'ultimo_error' => 'SOAP Fault: XML inválido en cac:TaxTotal /var/www/app.php:123',
+    ]);
+    actuarComoUsuarioEmpresa($empresa->id);
+
+    $this->get("/app/comprobantes/{$comprobante->id}")
+        ->assertOk()
+        ->assertSee('No pudimos completar el envío. Puedes usar Reintentar; si continúa, solicita ayuda.')
+        ->assertDontSee('SOAP Fault')
+        ->assertDontSee('cac:TaxTotal')
+        ->assertDontSee('/var/www/app.php')
+        ->assertDontSee('Último error')
+        ->assertDontSee('Trazabilidad SUNAT');
+});
+
 it('un super_admin sin empresa no puede entrar al panel de empresa y es redirigido al suyo', function () {
     $usuario = Usuario::query()->create([
         'name' => 'Administrador',

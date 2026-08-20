@@ -23,6 +23,6 @@ final class ViewComprobante extends ViewRecord
 
     public function infolist(Schema $schema): Schema
     {
-        return $schema->components(ComprobanteInfolist::secciones());
+        return $schema->components(ComprobanteInfolist::secciones(mostrarDiagnosticoTecnico: false));
     }
 }

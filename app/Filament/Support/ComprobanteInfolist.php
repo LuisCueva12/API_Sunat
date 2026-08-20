@@ -15,7 +15,7 @@ final class ComprobanteInfolist
     /**
      * @return array<int, Component>
      */
-    public static function secciones(): array
+    public static function secciones(bool $mostrarDiagnosticoTecnico = true): array
     {
         return [
             Section::make('Datos generales')->schema([
@@ -27,8 +27,17 @@ final class ComprobanteInfolist
                 TextEntry::make('fecha_vencimiento')->label('Fecha de vencimiento')->date()->visible(fn (Comprobante $record): bool => filled($record->fecha_vencimiento)),
                 TextEntry::make('forma_pago')->label('Forma de pago'),
                 TextEntry::make('moneda'),
-                TextEntry::make('intentos_envio')->label('Intentos de envío'),
-                TextEntry::make('ultimo_error')->label('Último error')->color('danger')->columnSpanFull()->visible(fn (Comprobante $record): bool => filled($record->ultimo_error)),
+                TextEntry::make('intentos_envio')->label('Intentos de envío')->visible($mostrarDiagnosticoTecnico),
+                TextEntry::make('mensaje_estado_facturador')
+                    ->label('Información')
+                    ->state(fn (Comprobante $record): string => ComprobanteFormato::mensajeEstadoFacturador($record->estado))
+                    ->columnSpanFull()
+                    ->visible(! $mostrarDiagnosticoTecnico),
+                TextEntry::make('ultimo_error')
+                    ->label('Último error')
+                    ->color('danger')
+                    ->columnSpanFull()
+                    ->visible(fn (Comprobante $record): bool => $mostrarDiagnosticoTecnico && filled($record->ultimo_error)),
             ])->columns(4),
 
             Section::make('Receptor')->schema([
@@ -79,7 +88,7 @@ final class ComprobanteInfolist
                     TextEntry::make('error_tecnico')->label('Error técnico')->color('danger')->columnSpanFull()->visible(fn (mixed $state): bool => filled($state)),
                     TextEntry::make('created_at')->label('Fecha')->dateTime(),
                 ])->columns(4)->visible(fn (Comprobante $record): bool => $record->enviosSunat->isNotEmpty()),
-            ]),
+            ])->visible($mostrarDiagnosticoTecnico),
 
             Section::make('Eventos')->schema([
                 RepeatableEntry::make('eventos')->hiddenLabel()->schema([
@@ -87,7 +96,7 @@ final class ComprobanteInfolist
                     TextEntry::make('actor'),
                     TextEntry::make('created_at')->label('Fecha')->dateTime(),
                 ])->columns(3),
-            ])->visible(fn (Comprobante $record): bool => $record->eventos->isNotEmpty()),
+            ])->visible(fn (Comprobante $record): bool => $mostrarDiagnosticoTecnico && $record->eventos->isNotEmpty()),
         ];
     }
 }

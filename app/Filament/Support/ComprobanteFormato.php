@@ -40,4 +40,17 @@ final class ComprobanteFormato
             default => 'gray',
         };
     }
+
+    public static function mensajeEstadoFacturador(string $estado): string
+    {
+        return match ($estado) {
+            'REGISTRADO' => 'Tu comprobante fue registrado y será enviado a SUNAT en breve.',
+            'PROCESANDO' => 'Estamos enviando el comprobante a SUNAT. No necesitas realizar ninguna acción.',
+            'ACEPTADO' => 'El comprobante fue aceptado por SUNAT.',
+            'ACEPTADO_CON_OBSERVACIONES' => 'SUNAT aceptó el comprobante con observaciones. Si necesitas ayuda, contacta a soporte.',
+            'RECHAZADO' => 'SUNAT no aceptó el comprobante. Revisa los datos registrados o solicita ayuda.',
+            'ERROR' => 'No pudimos completar el envío. Puedes usar Reintentar; si continúa, solicita ayuda.',
+            default => 'Consulta nuevamente en unos momentos para conocer el estado del comprobante.',
+        };
+    }
 }
