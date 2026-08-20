@@ -45,7 +45,7 @@ function crearSerieParaPanelEmpresa(string $empresaId, string $tipo, string $ser
 }
 
 it('redirige a los invitados al login del panel de empresa', function () {
-    $this->get('/app')->assertRedirect('/app/login');
+    $this->get('/gestion')->assertRedirect('/gestion/login');
 });
 
 it('rechaza un usuario sin empresa asignada y cierra su sesión', function () {
@@ -55,7 +55,7 @@ it('rechaza un usuario sin empresa asignada y cierra su sesión', function () {
         'password' => 'Clave-segura-123!',
     ]);
 
-    $this->actingAs($usuario)->get('/app')->assertRedirect('/admin/login');
+    $this->actingAs($usuario)->get('/gestion')->assertRedirect('/admin/login');
     $this->assertGuest('web');
 });
 
@@ -67,10 +67,9 @@ it('permite a un usuario de empresa entrar a su panel', function () {
     ]);
     actuarComoUsuarioEmpresa($empresa->id);
 
-    $this->get('/app')->assertOk();
-    $this->get('/app/comprobantes')->assertOk();
-    $this->get('/app/comprobantes/create')->assertOk();
-    $this->get('/app/clientes')->assertOk();
+    $this->get('/gestion/comprobantes')->assertOk();
+    $this->get('/gestion/comprobantes/create')->assertOk();
+    $this->get('/gestion/clientes')->assertOk();
 });
 
 it('un usuario de empresa ve solo los comprobantes de su propia empresa', function () {
@@ -112,7 +111,7 @@ it('nunca permite ver por URL directa el comprobante de otra empresa', function 
 
     actuarComoUsuarioEmpresa($empresaA->id);
 
-    $this->get("/app/comprobantes/{$comprobanteDeB->id}")->assertNotFound();
+    $this->get("/gestion/comprobantes/{$comprobanteDeB->id}")->assertNotFound();
 });
 
 it('un super_admin sin empresa no puede entrar al panel de empresa y es redirigido al suyo', function () {
@@ -123,7 +122,7 @@ it('un super_admin sin empresa no puede entrar al panel de empresa y es redirigi
     ]);
     $usuario->assignRole(Role::findOrCreate('super_admin', 'web'));
 
-    $this->actingAs($usuario)->get('/app')->assertRedirect('/admin');
+    $this->actingAs($usuario)->get('/gestion/comprobantes')->assertRedirect('/admin');
 });
 
 it('crea un cliente desde el panel de empresa sin pedir la empresa (se resuelve del usuario autenticado)', function () {
@@ -204,7 +203,7 @@ it('nunca permite ver por URL directa el cliente de otra empresa', function () {
 
     actuarComoUsuarioEmpresa($empresaA->id);
 
-    $this->get("/app/clientes/{$clienteDeB->id}/edit")->assertNotFound();
+    $this->get("/gestion/clientes/{$clienteDeB->id}/edit")->assertNotFound();
 });
 
 it('emite una boleta en un solo flujo sin registrar previamente al cliente', function () {

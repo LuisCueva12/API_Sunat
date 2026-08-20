@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Api\RespuestaApi;
+use App\Http\Middleware\AsegurarUsuarioFacturador;
 use App\Http\Middleware\AsignarRequestId;
 use App\Http\Middleware\Idempotencia;
 use App\Http\Middleware\ResolverEmpresaIntegracion;
@@ -42,6 +43,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'integracion.api' => ResolverEmpresaIntegracion::class,
             'api.idempotencia' => Idempotencia::class,
+            'facturador' => AsegurarUsuarioFacturador::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
@@ -111,6 +113,10 @@ return Application::configure(basePath: dirname(__DIR__))
 
             if (! $usuario instanceof Usuario) {
                 return null;
+            }
+
+            if ($usuario->empresa_id !== null) {
+                return redirect()->route('facturador.inicio');
             }
 
             foreach ($panels as $panel) {
