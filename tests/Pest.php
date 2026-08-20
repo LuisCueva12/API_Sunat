@@ -2,8 +2,28 @@
 
 declare(strict_types=1);
 
+use App\Models\Comprobante;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+
+function crearComprobantePanel(string $empresaId, array $overrides = []): Comprobante
+{
+    return Comprobante::query()->create(array_merge([
+        'empresa_id' => $empresaId,
+        'tipo' => 'FACTURA',
+        'serie' => 'F001',
+        'correlativo' => 1,
+        'estado' => 'ACEPTADO',
+        'fecha_emision' => now()->toDateString(),
+        'receptor_tipo_documento' => '6',
+        'receptor_numero_documento' => '20100070970',
+        'receptor_razon_social' => 'Cliente de prueba SAC',
+        'op_gravada' => '100.00',
+        'total_igv' => '18.00',
+        'total' => '118.00',
+        'snapshot_emisor' => ['ruc' => '20100070970'],
+    ], $overrides));
+}
 
 function generarCertificadoPemDePrueba(int $diasVigencia = 365): string
 {
@@ -22,21 +42,8 @@ function generarCertificadoPemDePrueba(int $diasVigencia = 365): string
     return $pem.$llavePem;
 }
 
-/*
-|--------------------------------------------------------------------------
-| Test Case
-|--------------------------------------------------------------------------
-|
-| The closure you provide to your test functions is always bound to a specific PHPUnit test
-| case class. By default, that class is "PHPUnit\Framework\TestCase". Of course, you may
-| need to change it using the "pest()" function to bind different classes or traits.
-|
-*/
-
 pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
     ->in('Feature', 'Integration');
 
-// Unit (incluye modules/Facturacion/Domain): sin RefreshDatabase — el
-// dominio no toca base de datos, y así la suite unitaria corre rápido.
 pest()->extend(TestCase::class)->in('Unit');

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Empresa\Resources\Comprobantes;
 
+use App\Filament\Empresa\Resources\Comprobantes\Pages\CreateComprobante;
 use App\Filament\Empresa\Resources\Comprobantes\Pages\ListComprobantes;
 use App\Filament\Empresa\Resources\Comprobantes\Pages\ViewComprobante;
 use App\Filament\Support\ComprobanteAcciones;
@@ -14,6 +15,7 @@ use BackedEnum;
 use Filament\Actions\ViewAction;
 use Filament\Facades\Filament;
 use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -32,15 +34,9 @@ final class ComprobanteResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'serie';
 
-    public static function canCreate(): bool
-    {
-        return false;
-    }
-
     /**
-     * Defensa en profundidad: el listado nunca depende solo del filtro visual
-     * de Filament — la query siempre está forzada a la empresa del usuario
-     * autenticado, sin importar qué parámetros lleguen por la URL.
+     * Defensa en profundidad: todas las consultas del recurso quedan
+     * restringidas a la empresa del usuario autenticado.
      */
     public static function getEloquentQuery(): Builder
     {
@@ -85,10 +81,16 @@ final class ComprobanteResource extends Resource
             ->defaultSort('created_at', 'desc');
     }
 
+    public static function form(Schema $schema): Schema
+    {
+        return EmisionComprobanteForm::configurar($schema);
+    }
+
     public static function getPages(): array
     {
         return [
             'index' => ListComprobantes::route('/'),
+            'create' => CreateComprobante::route('/create'),
             'view' => ViewComprobante::route('/{record}'),
         ];
     }

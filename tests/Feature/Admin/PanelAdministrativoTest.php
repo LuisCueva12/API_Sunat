@@ -8,7 +8,6 @@ use App\Filament\Admin\Resources\Empresas\Pages\CreateEmpresa;
 use App\Filament\Admin\Resources\Series\Pages\CreateSerie;
 use App\Jobs\ProcesarComprobante;
 use App\Models\Cliente;
-use App\Models\Comprobante;
 use App\Models\Empresa;
 use App\Models\Serie;
 use App\Models\Usuario;
@@ -30,25 +29,6 @@ function actuarComoAdministradorPanel(string $email = 'admin-panel@example.test'
     test()->actingAs($usuario);
 
     return $usuario;
-}
-
-function crearComprobantePanel(string $empresaId, array $overrides = []): Comprobante
-{
-    return Comprobante::query()->create(array_merge([
-        'empresa_id' => $empresaId,
-        'tipo' => 'FACTURA',
-        'serie' => 'F001',
-        'correlativo' => 1,
-        'estado' => 'ACEPTADO',
-        'fecha_emision' => now()->toDateString(),
-        'receptor_tipo_documento' => '6',
-        'receptor_numero_documento' => '20100070970',
-        'receptor_razon_social' => 'Cliente de prueba SAC',
-        'op_gravada' => '100.00',
-        'total_igv' => '18.00',
-        'total' => '118.00',
-        'snapshot_emisor' => ['ruc' => '20100070970'],
-    ], $overrides));
 }
 
 it('redirige a los invitados al login del panel', function () {
