@@ -26,7 +26,7 @@ final class EmpresaPanelProvider extends PanelProvider
     {
         return $panel
             ->id('empresa')
-            ->path('gestion')
+            ->path('app')
             ->login()
             ->profile(isSimple: false)
             ->authGuard('web')

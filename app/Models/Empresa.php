@@ -82,10 +82,4 @@ class Empresa extends Model
     {
         return $this->hasMany(Cliente::class);
     }
-
-    /** @return HasMany<ProductoServicio, $this> */
-    public function productosServicios(): HasMany
-    {
-        return $this->hasMany(ProductoServicio::class);
-    }
 }

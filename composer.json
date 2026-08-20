@@ -49,8 +49,8 @@
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
             "@php artisan key:generate",
             "@php artisan migrate --force",
-            "pnpm install --frozen-lockfile",
-            "pnpm build"
+            "npm install --ignore-scripts",
+            "npm run build"
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
