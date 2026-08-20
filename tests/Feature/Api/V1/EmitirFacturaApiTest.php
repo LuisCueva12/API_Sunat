@@ -9,6 +9,7 @@ use App\Models\Empresa as EmpresaEloquent;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Laravel\Passport\Client as ClienteOAuth;
 use Laravel\Passport\Passport;
@@ -54,6 +55,20 @@ function crearSerieFactura(string $empresaId, string $serie = 'F001'): void
         'id' => (string) Str::uuid7(),
         'empresa_id' => $empresaId,
         'tipo_comprobante' => 'FACTURA',
+        'serie' => $serie,
+        'correlativo_actual' => 0,
+        'activa' => true,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+}
+
+function crearSerieComprobante(string $empresaId, string $tipo, string $serie): void
+{
+    DB::table('series')->insert([
+        'id' => (string) Str::uuid7(),
+        'empresa_id' => $empresaId,
+        'tipo_comprobante' => $tipo,
         'serie' => $serie,
         'correlativo_actual' => 0,
         'activa' => true,
@@ -226,6 +241,41 @@ it('rechaza reusar una Idempotency-Key con una solicitud distinta', function () 
         ->assertJsonPath('error.codigo', 'IDEMPOTENCY_KEY_CONFLICTO');
 });
 
+it('aísla la Idempotency-Key por endpoint', function () {
+    [$empresa] = crearEmpresaConIntegracion();
+    crearSerieFactura($empresa->id);
+
+    DB::table('series')->insert([
+        'id' => (string) Str::uuid7(),
+        'empresa_id' => $empresa->id,
+        'tipo_comprobante' => 'BOLETA',
+        'serie' => 'B001',
+        'correlativo_actual' => 0,
+        'activa' => true,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $headers = ['Idempotency-Key' => 'venta-compartida'];
+
+    $this->withHeaders($headers)
+        ->postJson('/api/v1/facturas', payloadFacturaValida())
+        ->assertStatus(202)
+        ->assertJsonPath('data.tipo', 'factura');
+
+    $boleta = payloadFacturaValida();
+    $boleta['serie'] = 'B001';
+    $boleta['receptor_tipo_documento'] = '1';
+    $boleta['receptor_numero_documento'] = '12345678';
+
+    $this->withHeaders($headers)
+        ->postJson('/api/v1/boletas', $boleta)
+        ->assertStatus(202)
+        ->assertJsonPath('data.tipo', 'boleta');
+
+    expect(ComprobanteEloquent::query()->count())->toBe(2);
+});
+
 it('resuelve receptor_razon_social del maestro de Clientes cuando no se envía', function () {
     [$empresa] = crearEmpresaConIntegracion();
     crearSerieFactura($empresa->id);
@@ -270,4 +320,104 @@ it('nunca permite que una empresa consulte el comprobante de otra', function () 
 
     $this->getJson("/api/v1/comprobantes/{$comprobanteDeA->id}")
         ->assertStatus(404);
+});
+
+it('expone listado, detalle completo, eventos, empresa y archivos privados del tenant', function () {
+    Storage::fake('local');
+    [$empresa] = crearEmpresaConIntegracion();
+    crearSerieFactura($empresa->id);
+
+    $this->postJson('/api/v1/facturas', payloadFacturaValida())->assertStatus(202);
+    $comprobante = ComprobanteEloquent::query()->firstOrFail();
+
+    $this->getJson('/api/v1/comprobantes')
+        ->assertOk()
+        ->assertJsonCount(1, 'data');
+
+    $this->getJson("/api/v1/comprobantes/{$comprobante->id}")
+        ->assertOk()
+        ->assertJsonCount(1, 'data.items')
+        ->assertJsonCount(1, 'data.tributos')
+        ->assertJsonPath('data.totales.total', '118.00')
+        ->assertJsonMissingPath('data.procesamiento.ultimo_error');
+
+    DB::table('eventos_comprobante')->insert([
+        'comprobante_id' => $comprobante->id,
+        'empresa_id' => $empresa->id,
+        'tipo_evento' => 'ERROR',
+        'actor' => 'WORKER',
+        'datos' => json_encode(['mensaje' => 'ruta /servidor/secreta', 'intento' => 1]),
+        'created_at' => now()->addSecond(),
+    ]);
+
+    $this->getJson("/api/v1/comprobantes/{$comprobante->id}/eventos")
+        ->assertOk()
+        ->assertJsonPath('data.0.tipo', 'ERROR')
+        ->assertJsonPath('data.0.datos.intento', 1)
+        ->assertJsonMissingPath('data.0.datos.mensaje');
+
+    $this->getJson('/api/v1/empresas/actual')
+        ->assertOk()
+        ->assertJsonPath('data.id', $empresa->id)
+        ->assertJsonPath('data.ruc', '20100070970');
+
+    $rutaBase = "empresas/{$empresa->id}/comprobantes/{$comprobante->fecha_emision->format('Y/m')}/{$comprobante->id}";
+    Storage::disk('local')->put("{$rutaBase}/comprobante.xml", '<Invoice/>');
+    Storage::disk('local')->put("{$rutaBase}/cdr.zip", 'cdr-binario');
+
+    $this->get("/api/v1/comprobantes/{$comprobante->id}/xml")
+        ->assertOk()
+        ->assertHeader('content-type', 'application/xml; charset=UTF-8');
+
+    $this->get("/api/v1/comprobantes/{$comprobante->id}/cdr")
+        ->assertOk()
+        ->assertHeader('content-type', 'application/zip');
+
+    $this->getJson("/api/v1/comprobantes/{$comprobante->id}/pdf")
+        ->assertStatus(409)
+        ->assertJsonPath('error.codigo', 'PDF_NO_DISPONIBLE');
+
+    $comprobante->update(['estado' => 'ACEPTADO']);
+    Storage::disk('local')->put("{$rutaBase}/representacion-ticket-v3.pdf", '%PDF-1.4 prueba');
+
+    $this->get("/api/v1/comprobantes/{$comprobante->id}/pdf")
+        ->assertOk()
+        ->assertHeader('content-type', 'application/pdf');
+});
+
+it('emite boleta y notas de crédito y débito por sus endpoints HTTP', function () {
+    [$empresa] = crearEmpresaConIntegracion();
+    crearSerieFactura($empresa->id);
+    crearSerieComprobante($empresa->id, 'BOLETA', 'B001');
+    crearSerieComprobante($empresa->id, 'NOTA_CREDITO', 'FC01');
+    crearSerieComprobante($empresa->id, 'NOTA_DEBITO', 'FD01');
+
+    $factura = $this->postJson('/api/v1/facturas', payloadFacturaValida())
+        ->assertStatus(202)
+        ->json('data.id');
+    ComprobanteEloquent::query()->whereKey($factura)->update(['estado' => 'ACEPTADO']);
+
+    $boleta = payloadFacturaValida();
+    $boleta['serie'] = 'B001';
+    $boleta['receptor_tipo_documento'] = '1';
+    $boleta['receptor_numero_documento'] = '12345678';
+    $this->postJson('/api/v1/boletas', $boleta)
+        ->assertStatus(202)
+        ->assertJsonPath('data.tipo', 'boleta');
+
+    $nota = payloadFacturaValida();
+    $nota['comprobante_referencia_id'] = $factura;
+    $nota['descripcion_motivo'] = 'Ajuste del comprobante';
+
+    $nota['serie'] = 'FC01';
+    $nota['codigo_motivo'] = '06';
+    $this->postJson('/api/v1/notas-credito', $nota)
+        ->assertStatus(202)
+        ->assertJsonPath('data.tipo', 'nota_credito');
+
+    $nota['serie'] = 'FD01';
+    $nota['codigo_motivo'] = '02';
+    $this->postJson('/api/v1/notas-debito', $nota)
+        ->assertStatus(202)
+        ->assertJsonPath('data.tipo', 'nota_debito');
 });

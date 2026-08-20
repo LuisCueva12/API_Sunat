@@ -28,7 +28,7 @@ El Job implementa unicidad por `empresa_id + comprobante_id` durante una hora. V
 
 | Tipo de fallo | Comportamiento |
 |---|---|
-| Red / timeout / SUNAT no disponible / certificado o credenciales faltantes | `ProcesarEnvioComprobante` marca el comprobante en `ERROR` (reintentable) y deja que Laravel reintente el Job según `$tries`/`backoff()` |
+| Red / timeout / SUNAT no disponible / certificado o credenciales faltantes | `ProcesarEnvioComprobante` marca `ERROR`, persiste el intento y relanza la excepción para que Laravel aplique `$tries`/`backoff()` |
 | Rechazo tributario definitivo de SUNAT | **Nunca reintenta** — estado `RECHAZADO`, terminal, el Job termina exitosamente (no es un fallo del Job, es un resultado de negocio) |
 
 El Job es idempotente por diseño: `ProcesarEnvioComprobante::iniciarProcesamiento()` verifica el estado actual antes de actuar — si el comprobante ya está en un estado terminal (ACEPTADO/ACEPTADO_CON_OBSERVACIONES/RECHAZADO), no hace nada. Cubre tanto reintentos legítimos (estado `ERROR`) como la entrega *at-least-once* de las colas (un mismo Job ejecutado dos veces).

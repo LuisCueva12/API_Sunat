@@ -30,4 +30,6 @@ La firma cubre `timestamp + "." + body` para permitir al receptor rechazar reint
 
 Job `EnviarWebhook`, reintentos con backoff, historial completo en `entregas_webhook` (estado `PENDIENTE`/`ENTREGADO`/`FALLIDO`/`AGOTADO`). Un fallo de webhook **nunca** afecta el estado del comprobante ni bloquea la emisión — son sistemas desacoplados a propósito.
 
-Gestión de endpoints (alta/baja/eventos suscritos): solo panel en V1, ver [01_ARQUITECTURA.md](01_ARQUITECTURA.md) §11.
+Cada entrega usa timeout de conexión de 5 segundos, timeout total de 10 segundos y backoff de 10, 60, 300 y 900 segundos. Una respuesta HTTP no exitosa se reintenta hasta agotar cinco intentos.
+
+Gestión de endpoints (alta, rotación de secreto, activación y eventos suscritos): panel `/app/webhooks`, siempre restringido al tenant autenticado. Solo acepta HTTPS, vuelve a resolver el destino antes de cada entrega y rechaza IP privadas o reservadas para evitar SSRF.

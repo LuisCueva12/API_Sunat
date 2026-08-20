@@ -16,6 +16,7 @@ use Modules\Facturacion\Domain\Puertos\AsignadorCorrelativo;
 use Modules\Facturacion\Domain\Puertos\DespachadorProcesamiento;
 use Modules\Facturacion\Domain\Puertos\GeneradorId;
 use Modules\Facturacion\Domain\Puertos\GestorTransacciones;
+use Modules\Facturacion\Domain\Puertos\RegistradorTrazabilidadComprobante;
 use Modules\Facturacion\Domain\Puertos\RepositorioComprobante;
 use Modules\Facturacion\Domain\Tributario\CalculadorTributos;
 use Modules\Facturacion\Domain\Validacion\ValidadorComprobante;
@@ -36,6 +37,7 @@ abstract class EmitirComprobanteBase
         private readonly ValidadorComprobante $validador,
         private readonly DespachadorProcesamiento $despachador,
         private readonly RepositorioCliente $repositorioCliente,
+        private readonly RegistradorTrazabilidadComprobante $trazabilidad,
     ) {}
 
     abstract protected function tipo(): TipoComprobante;
@@ -94,6 +96,12 @@ abstract class EmitirComprobanteBase
             $this->validador->validar($comprobante);
 
             $this->repositorio->guardar($comprobante);
+            $this->trazabilidad->registrarEvento(
+                $comprobante,
+                'REGISTRADO',
+                actor: 'API_O_PANEL',
+                requestId: $input->requestId,
+            );
 
             return $comprobante;
         });

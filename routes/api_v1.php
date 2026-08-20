@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Api\V1\BoletaController;
 use App\Http\Controllers\Api\V1\ComprobanteController;
+use App\Http\Controllers\Api\V1\EmpresaController;
 use App\Http\Controllers\Api\V1\FacturaController;
 use App\Http\Controllers\Api\V1\NotaCreditoController;
 use App\Http\Controllers\Api\V1\NotaDebitoController;
@@ -26,8 +27,13 @@ Route::middleware([
 // Consulta y ciclo de vida: genérico — una vez creado, un comprobante es un recurso uniforme sin importar su tipo original.
 Route::middleware([CheckToken::using(ScopeApi::ComprobantesLeer->value), 'integracion.api'])->group(function () {
     Route::get('/comprobantes', [ComprobanteController::class, 'index']);
-    Route::get('/comprobantes/{id}', [ComprobanteController::class, 'show']);
     Route::get('/comprobantes/{id}/estado', [ComprobanteController::class, 'estado']);
+    Route::get('/comprobantes/{id}/eventos', [ComprobanteController::class, 'eventos']);
+    Route::get('/comprobantes/{id}/xml', [ComprobanteController::class, 'xml']);
+    Route::get('/comprobantes/{id}/cdr', [ComprobanteController::class, 'cdr']);
+    Route::get('/comprobantes/{id}/pdf', [ComprobanteController::class, 'pdf']);
+    Route::get('/comprobantes/{id}', [ComprobanteController::class, 'show']);
+    Route::get('/empresas/actual', EmpresaController::class);
 });
 
 Route::middleware([CheckToken::using(ScopeApi::ComprobantesReintentar->value), 'integracion.api'])->group(function () {

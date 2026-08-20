@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Services\DespachadorProcesamientoQueue;
+use App\Services\Webhooks\DespachadorWebhooksQueue;
 use Illuminate\Support\ServiceProvider;
 use Modules\Facturacion\Application\CasosDeUso\EmitirBoleta;
 use Modules\Facturacion\Application\CasosDeUso\EmitirFactura;
@@ -13,12 +14,14 @@ use Modules\Facturacion\Application\CasosDeUso\EmitirNotaDebito;
 use Modules\Facturacion\Domain\Puertos\AlmacenPrivado;
 use Modules\Facturacion\Domain\Puertos\AsignadorCorrelativo;
 use Modules\Facturacion\Domain\Puertos\DespachadorProcesamiento;
+use Modules\Facturacion\Domain\Puertos\DespachadorWebhooks;
 use Modules\Facturacion\Domain\Puertos\FabricaEnviadorComprobante;
 use Modules\Facturacion\Domain\Puertos\GeneradorId;
 use Modules\Facturacion\Domain\Puertos\GeneradorXmlFirmado;
 use Modules\Facturacion\Domain\Puertos\GestorClientesOAuth;
 use Modules\Facturacion\Domain\Puertos\GestorTransacciones;
 use Modules\Facturacion\Domain\Puertos\ProveedorDatosSunat;
+use Modules\Facturacion\Domain\Puertos\RegistradorTrazabilidadComprobante;
 use Modules\Facturacion\Domain\Puertos\RepositorioCertificado;
 use Modules\Facturacion\Domain\Puertos\RepositorioComprobante;
 use Modules\Facturacion\Domain\Puertos\RepositorioCredencialSunat;
@@ -33,6 +36,7 @@ use Modules\Facturacion\Domain\Validacion\ValidadorNotaDebito;
 use Modules\Facturacion\Infrastructure\Passport\GestorClientesOAuthPassport;
 use Modules\Facturacion\Infrastructure\Persistencia\Eloquent\AsignadorCorrelativoPostgres;
 use Modules\Facturacion\Infrastructure\Persistencia\Eloquent\GestorTransaccionesDb;
+use Modules\Facturacion\Infrastructure\Persistencia\Eloquent\RegistradorTrazabilidadComprobanteEloquent;
 use Modules\Facturacion\Infrastructure\Persistencia\Eloquent\RepositorioCertificadoEloquent;
 use Modules\Facturacion\Infrastructure\Persistencia\Eloquent\RepositorioComprobanteEloquent;
 use Modules\Facturacion\Infrastructure\Persistencia\Eloquent\RepositorioCredencialSunatEloquent;
@@ -58,12 +62,14 @@ class DomainServiceProvider extends ServiceProvider
         $this->app->bind(ProveedorDatosSunat::class, ProveedorDatosSunatEloquent::class);
         $this->app->bind(FabricaEnviadorComprobante::class, FabricaClienteSunatGreenter::class);
         $this->app->bind(DespachadorProcesamiento::class, DespachadorProcesamientoQueue::class);
+        $this->app->bind(DespachadorWebhooks::class, DespachadorWebhooksQueue::class);
         $this->app->bind(RepositorioEmpresa::class, RepositorioEmpresaEloquent::class);
         $this->app->bind(RepositorioSerie::class, RepositorioSerieEloquent::class);
         $this->app->bind(RepositorioCertificado::class, RepositorioCertificadoEloquent::class);
         $this->app->bind(RepositorioCredencialSunat::class, RepositorioCredencialSunatEloquent::class);
         $this->app->bind(RepositorioIntegracionApi::class, RepositorioIntegracionApiEloquent::class);
         $this->app->bind(GestorClientesOAuth::class, GestorClientesOAuthPassport::class);
+        $this->app->bind(RegistradorTrazabilidadComprobante::class, RegistradorTrazabilidadComprobanteEloquent::class);
 
         $this->app->when(EmitirFactura::class)
             ->needs(ValidadorComprobante::class)

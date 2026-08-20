@@ -7,9 +7,11 @@ use Illuminate\Support\Facades\Log;
 use Modules\Facturacion\Application\CasosDeUso\ProcesarEnvioComprobante;
 use Modules\Facturacion\Domain\Excepciones\ComprobanteInvalidoException;
 use Modules\Facturacion\Domain\Puertos\AlmacenPrivado;
+use Modules\Facturacion\Domain\Puertos\DespachadorWebhooks;
 use Modules\Facturacion\Domain\Puertos\FabricaEnviadorComprobante;
 use Modules\Facturacion\Domain\Puertos\GeneradorXmlFirmado;
 use Modules\Facturacion\Domain\Puertos\ProveedorDatosSunat;
+use Modules\Facturacion\Domain\Puertos\RegistradorTrazabilidadComprobante;
 use Modules\Facturacion\Domain\Puertos\RepositorioComprobante;
 
 afterEach(function () {
@@ -30,6 +32,8 @@ it('comparte la trazabilidad HTTP con los logs del worker', function () {
         Mockery::mock(GeneradorXmlFirmado::class),
         Mockery::mock(FabricaEnviadorComprobante::class),
         Mockery::mock(AlmacenPrivado::class),
+        Mockery::mock(RegistradorTrazabilidadComprobante::class),
+        Mockery::mock(DespachadorWebhooks::class),
     );
 
     $job = new ProcesarComprobante(

@@ -34,19 +34,21 @@ Error (nunca stack traces ni excepciones internas):
 | GET | `/comprobantes` | — | filtros: `tipo`, `estado`, `serie`, `fecha_desde`, `fecha_hasta`, paginado |
 | GET | `/comprobantes/{id}` | — | detalle completo |
 | GET | `/comprobantes/{id}/estado` | — | polling barato: solo estado + timestamps |
-| GET | `/comprobantes/{id}/eventos` | — | trazabilidad completa |
+| GET | `/comprobantes/{id}/eventos` | — | trazabilidad completa persistida |
 | POST | `/comprobantes/{id}/reintentar` | — | 409 si el estado no es `ERROR` |
-| GET | `/comprobantes/{id}/xml` \| `/cdr` \| `/pdf` | — | planificado; todavía no expuesto por API |
+| GET | `/comprobantes/{id}/xml` \| `/cdr` \| `/pdf` | — | descarga privada; PDF solo tras aceptación |
 | GET | `/empresas/actual` | — | info de la empresa dueña de la integración autenticada |
-| GET | `/up` | — | health check nativo de Laravel |
+| GET | `/up` | — | health check nativo en la raíz del servidor, fuera de `/api/v1` |
 
 Emisión específica por tipo (contrato de entrada difiere genuinamente) + consulta/ciclo de vida genérico sobre `/comprobantes` (recurso uniforme una vez creado). Justificación completa en [01_ARQUITECTURA.md](01_ARQUITECTURA.md) §7.
 
+La API informa estados, intentos y tipos de evento, pero no devuelve mensajes técnicos crudos de SOAP, rutas internas ni excepciones. Esos diagnósticos permanecen en la trazabilidad administrativa.
+
 En los cuatro endpoints de emisión, `receptor_razon_social` es opcional. Si se omite o llega vacío, el caso de uso busca un cliente de la misma empresa por `receptor_tipo_documento` + `receptor_numero_documento` y copia su razón social al snapshot del comprobante. Si no existe, responde `422` con código `COMPROBANTE_INVALIDO`. Cuando se envía una razón social no vacía, esta prevalece y no se consulta el maestro de clientes.
 
-Webhooks: gestión solo desde el panel en V1, no expuesta por API todavía (se agrega si un cliente real lo pide — evita superficie sin uso).
+Webhooks: gestión desde `/app/webhooks`, con destinos HTTPS públicos, firma HMAC-SHA256, reintentos e historial de entregas. No se exponen secretos persistidos ni se permiten destinos de red privada.
 
-La representación PDF en formato ticket térmico de 80 mm sí está disponible en el panel Filament para comprobantes aceptados. Se genera desde el XML firmado, se guarda en almacenamiento privado y se entrega mediante una acción autenticada y acotada a la empresa. Su endpoint API queda pendiente hasta definir el contrato de descarga de XML, CDR y PDF como conjunto.
+La representación PDF en formato ticket térmico de 80 mm está disponible tanto en Filament como en la API para comprobantes aceptados. XML, CDR y PDF permanecen en almacenamiento privado y solo se entregan tras verificar el tenant OAuth2.
 
 ## Idempotencia
 

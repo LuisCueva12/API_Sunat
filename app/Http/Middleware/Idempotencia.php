@@ -25,10 +25,12 @@ final class Idempotencia
         }
 
         $empresaId = $request->attributes->get('empresa_id');
+        $endpoint = $request->path();
         $hashSolicitud = hash('sha256', (string) $request->getContent());
 
         $existente = DB::table('idempotency_keys')
             ->where('empresa_id', $empresaId)
+            ->where('endpoint', $endpoint)
             ->where('clave', $clave)
             ->first();
 
@@ -37,14 +39,18 @@ final class Idempotencia
         }
 
         if ($existente !== null) {
-            DB::table('idempotency_keys')->where('empresa_id', $empresaId)->where('clave', $clave)->delete();
+            DB::table('idempotency_keys')
+                ->where('empresa_id', $empresaId)
+                ->where('endpoint', $endpoint)
+                ->where('clave', $clave)
+                ->delete();
         }
 
         try {
             DB::table('idempotency_keys')->insert([
                 'empresa_id' => $empresaId,
                 'clave' => $clave,
-                'endpoint' => $request->path(),
+                'endpoint' => $endpoint,
                 'hash_solicitud' => $hashSolicitud,
                 'estado' => 'PROCESANDO',
                 'expira_at' => now()->addHours((int) config('facturacion.idempotencia.ttl_horas')),
@@ -66,6 +72,7 @@ final class Idempotencia
 
         DB::table('idempotency_keys')
             ->where('empresa_id', $empresaId)
+            ->where('endpoint', $endpoint)
             ->where('clave', $clave)
             ->update([
                 'estado' => 'COMPLETADO',
