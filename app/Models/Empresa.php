@@ -82,4 +82,10 @@ class Empresa extends Model
     {
         return $this->hasMany(Cliente::class);
     }
+
+    /** @return HasMany<ConceptoFrecuente, $this> */
+    public function conceptosFrecuentes(): HasMany
+    {
+        return $this->hasMany(ConceptoFrecuente::class);
+    }
 }

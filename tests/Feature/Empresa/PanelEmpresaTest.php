@@ -9,6 +9,7 @@ use App\Filament\Empresa\Resources\Comprobantes\Pages\ListComprobantes;
 use App\Jobs\ProcesarComprobante;
 use App\Models\Cliente;
 use App\Models\Comprobante;
+use App\Models\ConceptoFrecuente;
 use App\Models\Empresa;
 use App\Models\Serie;
 use App\Models\Usuario;
@@ -335,6 +336,104 @@ it('autocompleta el receptor al elegir un cliente guardado en la emisión', func
     Queue::assertPushed(ProcesarComprobante::class);
 });
 
+it('autocompleta una línea al elegir un concepto frecuente de la empresa', function () {
+    $empresa = Empresa::query()->create([
+        'ruc' => '20100070970',
+        'razon_social' => 'Empresa Conceptos SAC',
+        'estado' => 'ACTIVA',
+    ]);
+    crearSerieParaPanelEmpresa($empresa->id, 'BOLETA', 'B001');
+    $concepto = ConceptoFrecuente::query()->create([
+        'empresa_id' => $empresa->id,
+        'descripcion' => 'Mantenimiento mensual',
+        'unidad_medida' => 'ZZ',
+        'valor_unitario' => '300.00',
+        'tipo_afectacion_igv' => '10',
+    ]);
+    actuarComoUsuarioEmpresa($empresa->id);
+
+    Livewire::test(CreateComprobante::class)
+        ->set('data.items.0.concepto_frecuente_id', $concepto->id)
+        ->assertSet('data.items.0.descripcion', 'Mantenimiento mensual')
+        ->assertSet('data.items.0.unidad_medida', 'ZZ')
+        ->assertSet('data.items.0.valor_unitario', '300.00')
+        ->assertSet('data.items.0.tipo_afectacion_igv', '10');
+});
+
+it('guarda una línea libre como concepto frecuente solo después de emitir', function () {
+    Queue::fake();
+
+    $empresa = Empresa::query()->create([
+        'ruc' => '20100070970',
+        'razon_social' => 'Empresa Conceptos SAC',
+        'estado' => 'ACTIVA',
+    ]);
+    crearSerieParaPanelEmpresa($empresa->id, 'BOLETA', 'B001');
+    actuarComoUsuarioEmpresa($empresa->id);
+
+    Livewire::test(CreateComprobante::class)
+        ->fillForm([
+            'tipo' => 'BOLETA',
+            'serie' => 'B001',
+            'receptor_tipo_documento' => 'SIN_DOCUMENTO',
+            'receptor_numero_documento' => '',
+            'receptor_razon_social' => 'Cliente varios',
+            'items' => [[
+                'descripcion' => 'Mantenimiento mensual',
+                'unidad_medida' => 'ZZ',
+                'cantidad' => 1,
+                'valor_unitario' => '300.00',
+                'descuento' => null,
+                'tipo_afectacion_igv' => '10',
+                'guardar_como_frecuente' => true,
+            ]],
+            'moneda' => 'PEN',
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    $this->assertDatabaseHas('conceptos_frecuentes', [
+        'empresa_id' => $empresa->id,
+        'descripcion' => 'Mantenimiento mensual',
+        'unidad_medida' => 'ZZ',
+        'valor_unitario' => '300.00',
+        'tipo_afectacion_igv' => '10',
+    ]);
+    expect(ConceptoFrecuente::query()->count())->toBe(1)
+        ->and(Comprobante::query()->sole()->total)->toBe('354.00');
+
+    Queue::assertPushed(ProcesarComprobante::class);
+});
+
+it('no permite autocompletar conceptos frecuentes de otra empresa', function () {
+    $empresaA = Empresa::query()->create([
+        'ruc' => '20100070970',
+        'razon_social' => 'Empresa A SAC',
+        'estado' => 'ACTIVA',
+    ]);
+    $empresaB = Empresa::query()->create([
+        'ruc' => '20100070971',
+        'razon_social' => 'Empresa B SAC',
+        'estado' => 'ACTIVA',
+    ]);
+    crearSerieParaPanelEmpresa($empresaA->id, 'BOLETA', 'B001');
+    $conceptoAjeno = ConceptoFrecuente::query()->create([
+        'empresa_id' => $empresaB->id,
+        'descripcion' => 'Concepto privado',
+        'unidad_medida' => 'ZZ',
+        'valor_unitario' => '999.00',
+        'tipo_afectacion_igv' => '10',
+    ]);
+    actuarComoUsuarioEmpresa($empresaA->id);
+
+    Livewire::test(CreateComprobante::class)
+        ->set('data.items.0.descripcion', 'Concepto libre')
+        ->set('data.items.0.valor_unitario', '10.00')
+        ->set('data.items.0.concepto_frecuente_id', $conceptoAjeno->id)
+        ->assertSet('data.items.0.descripcion', 'Concepto libre')
+        ->assertSet('data.items.0.valor_unitario', '10.00');
+});
+
 it('impide usar DNI en una factura desde el formulario', function () {
     Queue::fake();
 
@@ -360,12 +459,14 @@ it('impide usar DNI en una factura desde el formulario', function () {
                 'valor_unitario' => '10.00',
                 'descuento' => null,
                 'tipo_afectacion_igv' => '10',
+                'guardar_como_frecuente' => true,
             ]],
             'moneda' => 'PEN',
         ])
         ->call('create')
         ->assertHasFormErrors(['receptor_tipo_documento']);
 
-    expect(Comprobante::query()->count())->toBe(0);
+    expect(Comprobante::query()->count())->toBe(0)
+        ->and(ConceptoFrecuente::query()->count())->toBe(0);
     Queue::assertNothingPushed();
 });

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Empresa\Resources\Comprobantes;
 
 use App\Models\Cliente;
+use App\Models\ConceptoFrecuente;
 use App\Models\Serie;
 use App\Models\Usuario;
 use Filament\Facades\Filament;
@@ -12,6 +13,7 @@ use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Callout;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
@@ -107,8 +109,28 @@ final class EmisionComprobanteForm
                 Repeater::make('items')
                     ->hiddenLabel()
                     ->schema([
+                        Select::make('concepto_frecuente_id')
+                            ->label('Usar concepto frecuente (opcional)')
+                            ->options(fn (): array => self::conceptosFrecuentes())
+                            ->searchable()
+                            ->preload()
+                            ->live()
+                            ->afterStateUpdated(function (mixed $state, Set $set): void {
+                                $concepto = self::conceptoDelTenant(is_string($state) ? $state : null);
+
+                                if ($concepto === null) {
+                                    return;
+                                }
+
+                                $set('descripcion', $concepto->descripcion);
+                                $set('unidad_medida', $concepto->unidad_medida);
+                                $set('valor_unitario', $concepto->valor_unitario);
+                                $set('tipo_afectacion_igv', $concepto->tipo_afectacion_igv);
+                            })
+                            ->columnSpanFull(),
                         TextInput::make('descripcion')
-                            ->label('Producto o servicio')
+                            ->label('Concepto')
+                            ->placeholder('Ej. Mantenimiento mensual')
                             ->required()
                             ->maxLength(500)
                             ->columnSpan(4),
@@ -145,7 +167,18 @@ final class EmisionComprobanteForm
                             ->step(0.01)
                             ->live(onBlur: true)
                             ->columnSpan(2),
-                        Hidden::make('tipo_afectacion_igv')->default('10'),
+                        Select::make('tipo_afectacion_igv')
+                            ->label('IGV')
+                            ->options(['10' => 'Gravado (18%)'])
+                            ->default('10')
+                            ->required()
+                            ->columnSpan(3),
+                        Toggle::make('guardar_como_frecuente')
+                            ->label('Guardar como frecuente')
+                            ->helperText('Recordaremos descripción, precio, unidad e IGV para próximas ventas.')
+                            ->default(false)
+                            ->visible(fn (Get $get): bool => ! filled($get('concepto_frecuente_id')))
+                            ->columnSpan(5),
                     ])
                     ->columns(12)
                     ->defaultItems(1)
@@ -233,6 +266,30 @@ final class EmisionComprobanteForm
     private static function formatearCliente(Cliente $cliente): string
     {
         return "{$cliente->razon_social} · {$cliente->numero_documento}";
+    }
+
+    /** @return array<string, string> */
+    private static function conceptosFrecuentes(): array
+    {
+        return ConceptoFrecuente::query()
+            ->where('empresa_id', self::empresaId())
+            ->orderBy('descripcion')
+            ->get()
+            ->mapWithKeys(fn (ConceptoFrecuente $concepto): array => [
+                $concepto->id => sprintf('%s · S/ %s', $concepto->descripcion, number_format((float) $concepto->valor_unitario, 2)),
+            ])
+            ->all();
+    }
+
+    private static function conceptoDelTenant(?string $conceptoId): ?ConceptoFrecuente
+    {
+        if ($conceptoId === null || $conceptoId === '') {
+            return null;
+        }
+
+        return ConceptoFrecuente::query()
+            ->where('empresa_id', self::empresaId())
+            ->find($conceptoId);
     }
 
     private static function tipoDocumentoFormulario(string $tipoDocumento): string
