@@ -59,3 +59,9 @@ La V1 soporta operaciones gravadas con IGV 18 %, pago al contado y monedas PEN/U
 - [Webhooks](docs/08_WEBHOOKS.md)
 - [Despliegue](docs/09_DESPLIEGUE.md)
 - [Operación](docs/10_OPERACION.md)
+
+## Licencia
+
+Este proyecto fue creado por [LuisCueva12](https://github.com/LuisCueva12) y se distribuye bajo la [Licencia MIT](LICENSE). Puedes usarlo, modificarlo, distribuirlo y tomarlo como base para otros proyectos, siempre que conserves el aviso de copyright y la licencia original.
+
+Las contribuciones son bienvenidas y se publicarán bajo los mismos términos.
