@@ -47,7 +47,8 @@ body.facturador-body {
 .fac-sidebar {
     width: 252px;
     background: var(--fac-surface);
-    border-right: 1px solid var(--fac-line);
+    border-right: 0;
+    box-shadow: 8px 0 28px rgba(20, 24, 21, 0.018);
     position: fixed;
     inset: 0 auto 0 0;
     z-index: 1030;
@@ -61,7 +62,7 @@ body.facturador-body {
     height: 74px;
     background: rgba(250, 251, 250, 0.9);
     backdrop-filter: blur(14px);
-    border-bottom: 1px solid rgba(237, 240, 238, 0.8);
+    border-bottom: 0;
     position: sticky;
     top: 0;
     z-index: 1020;
@@ -167,7 +168,7 @@ body.facturador-body {
 }
 .fac-card {
     background: var(--fac-surface);
-    border: 1px solid rgba(237, 240, 238, 0.8);
+    border: 0;
     border-radius: var(--fac-radius);
     box-shadow: var(--fac-shadow);
 }
@@ -186,7 +187,7 @@ body.facturador-body {
     margin: 5px 0 0;
 }
 .fac-divider {
-    border-top: 1px solid var(--fac-line);
+    border-top: 0;
 }
 
 .btn-fac-primary {
@@ -309,10 +310,10 @@ body.facturador-body {
 }
 
 .fac-line-item {
-    border: 1px solid #ecefec;
+    border: 0;
     border-radius: 14px;
     padding: 16px;
-    background: #fff;
+    background: var(--fac-soft);
 }
 .fac-total-box {
     background: #13251d;
@@ -378,7 +379,7 @@ body.facturador-body {
 }
 .fac-table > :not(caption) > * > * {
     padding: 15px 18px;
-    border-bottom-color: var(--fac-line);
+    border-bottom-color: transparent;
     vertical-align: middle;
 }
 .fac-table thead th {
@@ -557,7 +558,7 @@ body.facturador-body {
     }
     .fac-table tbody tr {
         padding: 14px 18px;
-        border-bottom: 1px solid var(--fac-line);
+        border-bottom: 0;
     }
     .fac-table tbody td {
         border: 0;
